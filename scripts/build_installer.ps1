@@ -1,5 +1,5 @@
 param(
-  [string]$AppName = "AgingGeneMLApp",
+  [string]$AppName = "转录组数据综合分析系统 V1.0",
   [string]$InnoCompiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
   [switch]$SkipPortablePackage
 )
@@ -37,7 +37,7 @@ try {
   Pop-Location
 }
 
-$SetupExe = Join-Path $Root "dist\installer\AgingGeneMLApp-Setup.exe"
+$SetupExe = Join-Path $Root "dist\installer\$AppName-Setup.exe"
 if (!(Test-Path $SetupExe)) {
   throw "Installer was not generated: $SetupExe"
 }

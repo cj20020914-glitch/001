@@ -47,8 +47,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\package_windows.ps1
 生成结果在：
 
 ```text
-dist\AgingGeneMLApp-Windows
-dist\AgingGeneMLApp-Windows.zip
+dist\转录组数据综合分析系统 V1.0-Windows
+dist\转录组数据综合分析系统 V1.0-Windows.zip
 ```
 
 把 zip 发给别人，对方解压后双击 `启动软件.bat` 即可使用。
@@ -64,7 +64,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_installer.ps1
 生成结果在：
 
 ```text
-dist\installer\AgingGeneMLApp-Setup.exe
+dist\installer\转录组数据综合分析系统 V1.0-Setup.exe
 ```
 
 安装后会创建开始菜单快捷方式；安装末尾也可以直接启动软件。
