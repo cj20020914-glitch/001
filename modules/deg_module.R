@@ -421,6 +421,18 @@ deg_ui <- function(id) {
             type = "tabs",
             tabPanel(
               "样本类型矫正",
+              div(
+                class = "deg-upload-toolbar",
+                downloadButton(ns("downloadExampleCounts"), "示例表达矩阵",
+                               class = "btn-xs",
+                               style = "font-size: 9px; padding: 2px 8px;"),
+                downloadButton(ns("downloadExampleCtrl"), "control.txt",
+                               class = "btn-xs",
+                               style = "font-size: 9px; padding: 2px 8px;"),
+                downloadButton(ns("downloadExampleTreat"), "treat.txt",
+                               class = "btn-xs",
+                               style = "font-size: 9px; padding: 2px 8px;")
+              ),
               tags$div(
                 class = "deg-upload-row",
                 tags$div(
@@ -1474,6 +1486,47 @@ deg_server <- function(id) {
       )
     })
     
+    # ---- 样本类型矫正示例数据下载 ----
+    output$downloadExampleCounts <- downloadHandler(
+      filename = "geneMatrix.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$counts)) {
+          file.copy(EXAMPLE_DATA$counts, file, overwrite = TRUE)
+        } else {
+          set.seed(123)
+          genes <- paste0("Gene", 1:50)
+          samples <- paste0("Sample", 1:12)
+          data <- matrix(rnorm(50 * 12, mean = 10, sd = 3), nrow = 50, ncol = 12)
+          colnames(data) <- samples
+          rownames(data) <- genes
+          data[1:20, 7:12] <- data[1:20, 7:12] + 2
+          write.table(data, file, sep = "\t", quote = FALSE, row.names = TRUE, col.names = NA)
+        }
+      }
+    )
+
+    output$downloadExampleCtrl <- downloadHandler(
+      filename = "control.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$control)) {
+          file.copy(EXAMPLE_DATA$control, file, overwrite = TRUE)
+        } else {
+          writeLines(paste0("Sample", 1:6), file)
+        }
+      }
+    )
+
+    output$downloadExampleTreat <- downloadHandler(
+      filename = "treat.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$treat)) {
+          file.copy(EXAMPLE_DATA$treat, file, overwrite = TRUE)
+        } else {
+          writeLines(paste0("Sample", 7:12), file)
+        }
+      }
+    )
+
     observeEvent(input$sampleTypeExprFile, {
       req(input$sampleTypeExprFile$name)
       deg_set_upload_status("sampleTypeExprFileStatus", input$sampleTypeExprFile$name)
