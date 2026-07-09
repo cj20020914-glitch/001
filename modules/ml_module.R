@@ -363,6 +363,83 @@ ml_ui <- function(id) {
             id = ns("mlTabset"),
             type = "tabs",
             tabPanel(
+              "样本类型矫正",
+              value = "sample_type",
+              div(
+                class = "ml-download-row",
+                downloadButton(ns("downloadExampleCounts"), "示例表达矩阵", class = "btn-xs"),
+                downloadButton(ns("downloadExampleCtrl"), "control.txt", class = "btn-xs"),
+                downloadButton(ns("downloadExampleTreat"), "treat.txt", class = "btn-xs")
+              ),
+              tags$div(
+                class = "ml-upload-row",
+                tags$div(
+                  id = ns("sampleTypeExprFileBox"),
+                  class = "ml-upload-box",
+                  tags$div(
+                    class = "ml-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("表达矩阵", class = "ml-upload-title"),
+                    tags$span(id = ns("sampleTypeExprFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
+                  ),
+                  fileInput(
+                    ns("sampleTypeExprFile"),
+                    NULL,
+                    accept = c(".csv", ".txt", ".tsv"),
+                    buttonLabel = "浏览",
+                    placeholder = "选择表达矩阵文件"
+                  )
+                )
+              ),
+              tags$div(
+                class = "ml-upload-row",
+                tags$div(
+                  id = ns("sampleTypeControlFileBox"),
+                  class = "ml-upload-box",
+                  tags$div(
+                    class = "ml-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("对照组列表", class = "ml-upload-title"),
+                    tags$span(id = ns("sampleTypeControlFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
+                  ),
+                  fileInput(
+                    ns("sampleTypeControlFile"),
+                    NULL,
+                    accept = c(".txt", ".csv", ".tsv"),
+                    buttonLabel = "浏览",
+                    placeholder = "选择对照组列表"
+                  )
+                )
+              ),
+              tags$div(
+                class = "ml-upload-row",
+                tags$div(
+                  id = ns("sampleTypeTreatFileBox"),
+                  class = "ml-upload-box",
+                  tags$div(
+                    class = "ml-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("实验组列表", class = "ml-upload-title"),
+                    tags$span(id = ns("sampleTypeTreatFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
+                  ),
+                  fileInput(
+                    ns("sampleTypeTreatFile"),
+                    NULL,
+                    accept = c(".txt", ".csv", ".tsv"),
+                    buttonLabel = "浏览",
+                    placeholder = "选择实验组列表"
+                  )
+                )
+              ),
+              div(
+                class = "ml-compact-section",
+                span("处理参数", class = "ml-compact-title"),
+                checkboxInput(ns("sampleTypeAutoLog"), "自动判断是否 log2 转换", value = TRUE),
+                checkboxInput(ns("sampleTypeNormalize"), "进行 limma 组间标准化", value = TRUE)
+              ),
+              actionButton(ns("runSampleType"), "生成样本类型矩阵", class = "btn-success btn-sm ml-run-btn")
+            ),
+            tabPanel(
               "提取特征值",
               value = "提取特征值",
               tags$div(
@@ -526,6 +603,7 @@ ml_ui <- function(id) {
                 "结果表",
                 div(
                   class = "ml-result-slot",
+                  conditionalPanel(ns = ns, condition = "input.mlTabset == 'sample_type'", uiOutput(ns("sampleTypeFileList"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '提取特征值'", uiOutput(ns("prepFeatureFileList"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '11种算法'", uiOutput(ns("allMlResultFileList")))
                 )
@@ -534,6 +612,7 @@ ml_ui <- function(id) {
                 "数据预览",
                 div(
                   class = "ml-result-slot",
+                  conditionalPanel(ns = ns, condition = "input.mlTabset == 'sample_type'", uiOutput(ns("sampleTypeUI"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '提取特征值'", DTOutput(ns("prepTable")), br(), DTOutput(ns("prepInfo"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '11种算法'", DTOutput(ns("allMlPerformanceTable")), br(), DTOutput(ns("allMlTopGenesTable")), br(), DTOutput(ns("allMlMessagesTable")))
                 )
@@ -1480,6 +1559,46 @@ ml_server <- function(id) {
         stringsAsFactors = FALSE
       )
     }
+
+    output$downloadExampleCounts <- downloadHandler(
+      filename = "geneMatrix.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$counts)) {
+          file.copy(EXAMPLE_DATA$counts, file, overwrite = TRUE)
+        } else {
+          set.seed(123)
+          genes <- paste0("Gene", 1:50)
+          samples <- paste0("Sample", 1:12)
+          data <- matrix(rnorm(50 * 12, mean = 10, sd = 3), nrow = 50, ncol = 12)
+          colnames(data) <- samples
+          rownames(data) <- genes
+          data[1:20, 7:12] <- data[1:20, 7:12] + 2
+          write.table(data, file, sep = "\t", quote = FALSE, row.names = TRUE, col.names = NA)
+        }
+      }
+    )
+
+    output$downloadExampleCtrl <- downloadHandler(
+      filename = "control.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$control)) {
+          file.copy(EXAMPLE_DATA$control, file, overwrite = TRUE)
+        } else {
+          writeLines(paste0("Sample", 1:6), file)
+        }
+      }
+    )
+
+    output$downloadExampleTreat <- downloadHandler(
+      filename = "treat.txt",
+      content = function(file) {
+        if (exists("EXAMPLE_DATA", inherits = TRUE) && file.exists(EXAMPLE_DATA$treat)) {
+          file.copy(EXAMPLE_DATA$treat, file, overwrite = TRUE)
+        } else {
+          writeLines(paste0("Sample", 7:12), file)
+        }
+      }
+    )
 
     observeEvent(input$sampleTypeExprFile, {
       req(input$sampleTypeExprFile$name)

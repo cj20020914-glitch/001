@@ -486,12 +486,6 @@ deg_ui <- function(id) {
               "差异分析",
               div(
                 class = "deg-upload-toolbar",
-                actionButton(ns("exampleBtn"), "示例数据",
-                             class = "btn-primary btn-xs",
-                             style = "font-size: 10px; padding: 2px 10px;"),
-                downloadButton(ns("downloadExampleCounts"), "表达矩阵",
-                               class = "btn-xs",
-                               style = "font-size: 9px; padding: 2px 8px;"),
                 actionButton(ns("clearAllFiles"), "清除全部",
                              class = "btn-danger btn-xs",
                              style = "font-size: 9px; padding: 1px 6px;")
@@ -1368,7 +1362,7 @@ deg_server <- function(id) {
                     )
                   ),
                   tags$br(),
-                  tags$span("点击 ", tags$span(class = "tag tag-blue", "示例数据"), " 按钮可下载测试文件")
+                  tags$span("可直接上传样本列名已带 _con/_tre 后缀的表达矩阵文件。")
               )
             ),
             
@@ -1480,21 +1474,6 @@ deg_server <- function(id) {
       )
     })
     
-    # ---- 示例数据下载 ----
-    output$downloadExampleCounts <- downloadHandler(
-      filename = "Sample_Type_Matrix_example.txt",
-      content = function(file) {
-        set.seed(123)
-        genes <- paste0("Gene", 1:50)
-        samples <- c(paste0("Sample", 1:6, "_con"), paste0("Sample", 7:12, "_tre"))
-        data <- matrix(rnorm(50 * 12, mean = 10, sd = 3), nrow = 50, ncol = 12)
-        colnames(data) <- samples
-        rownames(data) <- genes
-        data[1:20, 7:12] <- data[1:20, 7:12] + 2
-        write.table(data, file, sep = "\t", quote = FALSE, row.names = TRUE, col.names = NA)
-      }
-    )
-
     observeEvent(input$sampleTypeExprFile, {
       req(input$sampleTypeExprFile$name)
       deg_set_upload_status("sampleTypeExprFileStatus", input$sampleTypeExprFile$name)
@@ -1580,11 +1559,6 @@ deg_server <- function(id) {
       sample_type_result(NULL)
       analysisResults(NULL)
       showNotification("已清除所有上传文件和分析结果", type = "message")
-    })
-    
-    # ---- 示例数据说明 ----
-    observeEvent(input$exampleBtn, {
-      showNotification("示例数据已准备好，点击下方按钮下载", type = "message")
     })
     
     # ---- 运行日志 ----
