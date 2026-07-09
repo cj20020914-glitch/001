@@ -1,169 +1,6 @@
 # ml_module.R - 机器学习模块（提取特征值 + 11种算法）
 
 # ============================================================
-# UI
-# ============================================================
-ml_ui <- function(id) {
-  ns <- NS(id)
-  
-  fluidRow(
-    # ---- 左侧控制面板 ----
-    column(
-      width = 3,
-      wellPanel(
-        h4("⚙️ 参数设置"),
-        
-        # ============================================================
-        # 子选项卡1: 提取特征值
-        # ============================================================
-        conditionalPanel(
-          ns = ns,
-          condition = "input.mlTabset == '提取特征值'",
-          
-          # 文件上传1: 表达矩阵
-          fileInput(ns("prepExprFile"), "📤 上传表达矩阵 (CSV)",
-                    accept = c(".csv")),
-          p("格式：第一列为基因名，其余列为样本表达值", 
-            style = "font-size: 11px; color: #888;"),
-          
-          hr(),
-          
-          # 文件上传2: 基因列表
-          fileInput(ns("prepGeneFile"), "📤 上传基因列表 (TXT/CSV)",
-                    accept = c(".txt", ".csv")),
-          p("格式：每行一个基因名", 
-            style = "font-size: 11px; color: #888;"),
-          
-          hr(),
-          
-          # 运行按钮
-          actionButton(ns("runPrep"), "🚀 提取特征值", 
-                       class = "btn-success",
-                       style = "width: 100%; font-size: 16px; font-weight: bold;")
-        ),
-
-        # ============================================================
-        # 子选项卡: 样本类型矫正
-        # ============================================================
-        conditionalPanel(
-          ns = ns,
-          condition = "input.mlTabset == '样本类型矫正'",
-
-          fileInput(ns("sampleTypeExprFile"), "上传 geneMatrix 表达矩阵",
-                    accept = c(".txt", ".csv", ".tsv")),
-          p("第一列为基因名，其余列为样本表达值。",
-            style = "font-size: 11px; color: #888;"),
-
-          hr(),
-
-          fileInput(ns("sampleTypeControlFile"), "上传 control.txt",
-                    accept = c(".txt", ".csv", ".tsv")),
-          fileInput(ns("sampleTypeTreatFile"), "上传 treat.txt",
-                    accept = c(".txt", ".csv", ".tsv")),
-          p("control/treat 文件每行一个样本名，需与表达矩阵列名一致。",
-            style = "font-size: 11px; color: #888;"),
-
-          hr(),
-
-          checkboxInput(ns("sampleTypeAutoLog"), "自动判断是否 log2 转换", value = TRUE),
-          checkboxInput(ns("sampleTypeNormalize"), "进行 limma 组间标准化", value = TRUE),
-
-          hr(),
-
-          actionButton(ns("runSampleType"), "生成样本类型矩阵",
-                       class = "btn-success",
-                       style = "width: 100%; font-size: 16px; font-weight: bold;")
-        ),
-        
-        # ============================================================
-        # 子选项卡: 11种机器学习算法
-        # ============================================================
-        conditionalPanel(
-          ns = ns,
-          condition = "input.mlTabset == '11种算法'",
-
-          fileInput(ns("allMlFile"), "上传 geneexp.csv",
-                    accept = c(".csv")),
-          p("格式来自“提取特征值”：第一列为 ID/基因名，其余列为样本表达值。",
-            style = "font-size: 11px; color: #888;"),
-
-          hr(),
-
-          sliderInput(ns("allMlSplitRatio"), "训练集比例",
-                      min = 0.5, max = 0.9, value = 0.7, step = 0.05),
-          numericInput(ns("allMlCvFolds"), "交叉验证折数",
-                       value = 5, min = 3, max = 10, step = 1),
-          numericInput(ns("allMlTopGenes"), "每个模型输出Top基因数",
-                       value = 5, min = 1, max = 50, step = 1),
-          textInput(ns("allMlReferenceGroup"), "对照组标签",
-                    value = "con"),
-
-          hr(),
-
-          actionButton(ns("runAllMl"), "运行11种算法",
-                       class = "btn-success",
-                       style = "width: 100%; font-size: 16px; font-weight: bold;")
-        )
-      )
-    ),
-    
-    # ---- 右侧展示面板 ----
-    column(
-      width = 9,
-      tabsetPanel(
-        id = ns("mlTabset"),
-        
-        # ============================================================
-        # 子选项卡1: 提取特征值
-        # ============================================================
-        tabPanel(
-          "📋 提取特征值",
-          br(),
-          uiOutput(ns("prepUI")),
-          br(),
-          downloadButton(ns("downloadPrepResult"), "下载 CSV")
-        ),
-
-        tabPanel(
-          "样本类型矫正",
-          br(),
-          uiOutput(ns("sampleTypeUI")),
-          br(),
-          downloadButton(ns("downloadSampleTypeCSV"), "下载 Sample Type Matrix.csv"),
-          downloadButton(ns("downloadSampleTypeTXT"), "下载 Sample Type Matrix.txt"),
-          downloadButton(ns("downloadSampleTypeSummary"), "下载 Sample_Summary.txt")
-        ),
-        
-        # ============================================================
-        # 子选项卡: 11种机器学习算法
-        # ============================================================
-        tabPanel(
-          "11种算法",
-          br(),
-          uiOutput(ns("allMlStatusUI")),
-          br(),
-          tabsetPanel(
-            id = ns("allMlTabset"),
-            tabPanel("模型性能", br(), DTOutput(ns("allMlPerformanceTable"))),
-            tabPanel("Top基因", br(), DTOutput(ns("allMlTopGenesTable")), br(),
-                     downloadButton(ns("downloadAllMlTopGenes"), "下载Top基因CSV")),
-            tabPanel("ROC曲线", br(), imageOutput(ns("allMlRocPlot"), height = "520px"),
-                     br(), downloadButton(ns("downloadAllMlRoc"), "下载ROC PNG")),
-            tabPanel("重要性", br(), imageOutput(ns("allMlImportancePlot"), height = "620px"),
-                     br(), downloadButton(ns("downloadAllMlImportance"), "下载重要性 PNG")),
-            tabPanel("残差", br(), imageOutput(ns("allMlResidualPlot"), height = "520px"),
-                     br(), downloadButton(ns("downloadAllMlResidual"), "下载残差 PNG")),
-            tabPanel("单模型图", br(), uiOutput(ns("allMlSingleModelUI"))),
-            tabPanel("训练信息", br(), DTOutput(ns("allMlMessagesTable")))
-          )
-        )
-      )
-    )
-  )
-}
-
-
-# ============================================================
 # UI - 差异分析同款紧凑布局
 # ============================================================
 ml_ui <- function(id) {
@@ -526,77 +363,6 @@ ml_ui <- function(id) {
             id = ns("mlTabset"),
             type = "tabs",
             tabPanel(
-              "样本类型矫正",
-              value = "样本类型矫正",
-              tags$div(
-                class = "ml-upload-row",
-                tags$div(
-                  id = ns("sampleTypeExprFileBox"),
-                  class = "ml-upload-box",
-                  tags$div(
-                    class = "ml-upload-placeholder",
-                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                    tags$span("表达矩阵", class = "ml-upload-title"),
-                    tags$span(id = ns("sampleTypeExprFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
-                  ),
-                  fileInput(
-                    ns("sampleTypeExprFile"),
-                    NULL,
-                    accept = c(".csv", ".tsv", ".txt"),
-                    buttonLabel = "浏览",
-                    placeholder = "选择表达矩阵文件"
-                  )
-                )
-              ),
-              tags$div(
-                class = "ml-upload-row",
-                tags$div(
-                  id = ns("sampleTypeControlFileBox"),
-                  class = "ml-upload-box",
-                  tags$div(
-                    class = "ml-upload-placeholder",
-                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                    tags$span("对照组列表", class = "ml-upload-title"),
-                    tags$span(id = ns("sampleTypeControlFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
-                  ),
-                  fileInput(
-                    ns("sampleTypeControlFile"),
-                    NULL,
-                    accept = c(".txt", ".csv", ".tsv"),
-                    buttonLabel = "浏览",
-                    placeholder = "选择对照组列表"
-                  )
-                )
-              ),
-              tags$div(
-                class = "ml-upload-row",
-                tags$div(
-                  id = ns("sampleTypeTreatFileBox"),
-                  class = "ml-upload-box",
-                  tags$div(
-                    class = "ml-upload-placeholder",
-                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                    tags$span("实验组列表", class = "ml-upload-title"),
-                    tags$span(id = ns("sampleTypeTreatFileStatus"), "Drop file here or click to upload", class = "ml-upload-status")
-                  ),
-                  fileInput(
-                    ns("sampleTypeTreatFile"),
-                    NULL,
-                    accept = c(".txt", ".csv", ".tsv"),
-                    buttonLabel = "浏览",
-                    placeholder = "选择实验组列表"
-                  )
-                )
-              ),
-              div(
-                class = "ml-compact-section",
-                span("处理参数", class = "ml-compact-title"),
-                checkboxInput(ns("sampleTypeAutoLog"), "自动判断是否 log2 转换", value = TRUE),
-                checkboxInput(ns("sampleTypeNormalize"), "进行 limma 组间标准化", value = TRUE)
-              ),
-              actionButton(ns("runSampleType"), "生成样本类型矩阵", class = "btn-success btn-sm ml-run-btn")
-            ),
-            tabPanel(
               "提取特征值",
               value = "提取特征值",
               tags$div(
@@ -760,7 +526,6 @@ ml_ui <- function(id) {
                 "结果表",
                 div(
                   class = "ml-result-slot",
-                  conditionalPanel(ns = ns, condition = "input.mlTabset == '样本类型矫正'", uiOutput(ns("sampleTypeFileList"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '提取特征值'", uiOutput(ns("prepFeatureFileList"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '11种算法'", uiOutput(ns("allMlResultFileList")))
                 )
@@ -769,7 +534,6 @@ ml_ui <- function(id) {
                 "数据预览",
                 div(
                   class = "ml-result-slot",
-                  conditionalPanel(ns = ns, condition = "input.mlTabset == '样本类型矫正'", DTOutput(ns("sampleTypePreview")), br(), DTOutput(ns("sampleTypeSummary"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '提取特征值'", DTOutput(ns("prepTable")), br(), DTOutput(ns("prepInfo"))),
                   conditionalPanel(ns = ns, condition = "input.mlTabset == '11种算法'", DTOutput(ns("allMlPerformanceTable")), br(), DTOutput(ns("allMlTopGenesTable")), br(), DTOutput(ns("allMlMessagesTable")))
                 )
@@ -780,7 +544,7 @@ ml_ui <- function(id) {
                   class = "ml-qa",
                   tags$dl(
                     tags$dt("Q1：机器学习模块推荐流程是什么？"),
-                    tags$dd("先运行样本类型矫正生成 Sample Type Matrix，再用提取特征值生成 geneexp.csv，最后进入 11种算法。"),
+                    tags$dd("先在差异分析模块运行样本类型矫正生成 Sample Type Matrix，再用提取特征值生成 geneexp.csv，最后进入 11种算法。"),
                     tags$dt("Q2：样本名为什么要加 _con 和 _tre？"),
                     tags$dd("后续机器学习脚本会从样本名后缀识别分组。_con 表示对照组，_tre 表示实验组，分组错误会直接影响训练标签。"),
                     tags$dt("Q3：geneexp.csv 的格式是什么？"),
@@ -1177,6 +941,12 @@ ml_server <- function(id) {
       for (mn in names(varimp_lst)) {
         tab <- varimp_lst[[mn]]
         if (!is.null(tab) && nrow(tab) > 0) {
+          if ("variable" %in% colnames(tab)) {
+            tab <- tab[!is.na(tab$variable) & tab$variable != "_full_model_", , drop = FALSE]
+          }
+          if (!nrow(tab)) {
+            next
+          }
           gene_to_write <- tab[1:min(top_n, nrow(tab)), ]
           gene_to_write$Model <- toupper(mn)
           top_gene_tables[[mn]] <- gene_to_write
@@ -1184,6 +954,23 @@ ml_server <- function(id) {
             gene_to_write,
             file = file.path(output_dir, paste0("importanceGene_", toupper(mn), ".csv")),
             row.names = FALSE,
+            fileEncoding = "UTF-8"
+          )
+          gene_col <- if ("variable" %in% colnames(gene_to_write)) {
+            "variable"
+          } else if ("Gene" %in% colnames(gene_to_write)) {
+            "Gene"
+          } else {
+            colnames(gene_to_write)[[1]]
+          }
+          gene_names <- unique(as.character(gene_to_write[[gene_col]]))
+          gene_names <- gene_names[nzchar(gene_names) & !is.na(gene_names) & gene_names != "_full_model_"]
+          utils::write.table(
+            data.frame(Gene = gene_names),
+            file = file.path(output_dir, paste0(toupper(mn), ".txt")),
+            quote = FALSE,
+            row.names = FALSE,
+            col.names = FALSE,
             fileEncoding = "UTF-8"
           )
         }
@@ -1284,6 +1071,10 @@ ml_server <- function(id) {
           csv_rows,
           list(data.frame(Key = paste0("importanceGene_", model_label), File = paste0("importanceGene_", model_label, ".csv"), Type = "CSV", Desc = paste0(model_label, " Top 重要基因"), Path = file.path(output_dir, paste0("importanceGene_", model_label, ".csv")), stringsAsFactors = FALSE))
         )
+        csv_rows <- c(
+          csv_rows,
+          list(data.frame(Key = paste0("geneList_", model_label), File = paste0(model_label, ".txt"), Type = "TXT", Desc = paste0(model_label, " Top 基因列表"), Path = file.path(output_dir, paste0(model_label, ".txt")), stringsAsFactors = FALSE))
+        )
       }
       csv_files <- do.call(rbind, csv_rows)
       csv_files <- csv_files[file.exists(csv_files$Path), , drop = FALSE]
@@ -1333,7 +1124,7 @@ ml_server <- function(id) {
       all_ml_running(TRUE)
       all_ml_results(NULL)
       active_all_ml_plot(NULL)
-      showNotification("11种机器学习算法已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = 5)
+      showNotification("11种机器学习算法已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
 
       run_async_task(
         task = function() {
@@ -1618,7 +1409,11 @@ ml_server <- function(id) {
       "importance",
       as.vector(outer(c("ConfMat", "PRcurve", "PredProbHist"), all_ml_model_keys, paste, sep = "_"))
     )
-    all_ml_csv_keys <- c("importanceGenes_summary", paste0("importanceGene_", all_ml_model_keys))
+    all_ml_csv_keys <- c(
+      "importanceGenes_summary",
+      paste0("importanceGene_", all_ml_model_keys),
+      paste0("geneList_", all_ml_model_keys)
+    )
     all_ml_file_keys <- c(all_ml_image_keys, all_ml_csv_keys)
 
     for (plot_key in all_ml_image_keys) {
@@ -1937,7 +1732,7 @@ ml_server <- function(id) {
 
       sample_type_running(TRUE)
       sample_type_result(NULL)
-      showNotification("样本类型矫正已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = 5)
+      showNotification("样本类型矫正已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
 
       run_async_task(
         task = function() {
@@ -2048,7 +1843,7 @@ ml_server <- function(id) {
 
       prep_expr_file <- input$prepExprFile
       prep_gene_file <- input$prepGeneFile
-      showNotification("特征值提取已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = 5)
+      showNotification("特征值提取已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
 
       run_async_task(
         task = function() {
@@ -2246,7 +2041,7 @@ ml_server <- function(id) {
     
 
     output$mlActivePanel <- renderUI({
-      current_tab <- input$mlTabset %||% "样本类型矫正"
+      current_tab <- input$mlTabset %||% "提取特征值"
 
       metric_grid <- function(items) {
         div(
@@ -2257,32 +2052,13 @@ ml_server <- function(id) {
         )
       }
 
-      if (identical(current_tab, "样本类型矫正")) {
-        res <- sample_type_result()
-        if (sample_type_running()) {
-          return(tagList(tags$b("样本类型矫正"), tags$p("正在后台处理表达矩阵、分组样本和标准化步骤。")))
-        }
-        if (is.null(res)) {
-          return(tagList(tags$b("样本类型矫正"), tags$p("上传 geneMatrix、control.txt 和 treat.txt 后生成带 _con/_tre 后缀的样本类型矩阵。")))
-        }
-        return(tagList(
-          tags$b("样本类型矫正已完成"),
-          metric_grid(list(
-            list("矩阵行数", nrow(res$matrix)),
-            list("样本数", ncol(res$matrix) - 1),
-            list("输出CSV", "Sample Type Matrix.csv"),
-            list("输出TXT", "Sample Type Matrix.txt")
-          ))
-        ))
-      }
-
       if (identical(current_tab, "提取特征值")) {
         info <- prep_info()
         if (prep_running()) {
           return(tagList(tags$b("提取特征值"), tags$p("正在后台提取研究方向基因表达矩阵。")))
         }
         if (is.null(info)) {
-          return(tagList(tags$b("提取特征值"), tags$p("上传样本类型矩阵和基因列表，生成后续机器学习使用的 geneexp.csv。")))
+          return(NULL)
         }
         return(tagList(
           tags$b("提取特征值已完成"),

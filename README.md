@@ -10,7 +10,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 软件名称 | 转录组数据综合分析系统 |
+| 软件名称 | 转录组数据综合分析系统 V1.0 |
 | 软件版本 | V1.0 |
 | 软件类型 | R Shiny 桌面/本地 Web 应用 |
 | 开发语言 | R |
@@ -292,4 +292,3 @@ source("scripts/check_dependencies.R", encoding = "UTF-8")
 - 完成 Shiny 主程序和模块化框架。
 - 支持 GEO 数据整理、数据集合并、差异分析、WGCNA、Venn 图、富集分析、机器学习、列线图、ROC 曲线和免疫浸润分析。
 - 数据集合并模块输出文件名统一为 `geneMatrix.txt` 和 `geneMatrix.csv`。
-

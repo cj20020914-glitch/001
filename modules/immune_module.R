@@ -150,8 +150,13 @@ run_cibersort <- function(expr_matrix, lm22_matrix = NULL,
   
   common_genes <- intersect(rownames(expr_matrix), rownames(lm22_matrix))
   if (length(common_genes) < 10) {
-    common_genes <- rownames(expr_matrix)[1:min(nrow(expr_matrix), nrow(lm22_matrix))]
-    warning("共同基因太少，使用前", length(common_genes), "个基因")
+    stop(
+      paste0(
+        "表达矩阵与LM22参考矩阵共同基因过少（当前 ", length(common_genes),
+        " 个，至少需要 10 个）。请确认表达矩阵第一列为Gene Symbol，或更换与当前物种/基因命名一致的参考矩阵。"
+      ),
+      call. = FALSE
+    )
   }
   
   message(paste("共同基因:", length(common_genes), "个"))
@@ -367,55 +372,159 @@ plot_immune_correlation <- function(fractions) {
 }
 
 plot_immune_lollipop <- function(corr_results, gene_name) {
-  
-  plot_data <- corr_results[corr_results$gene == gene_name, ]
-  
+  names(corr_results) <- sub("^spec$", "gene", names(corr_results))
+  names(corr_results) <- sub("^env$", "cell_type", names(corr_results))
+
+  required_cols <- c("gene", "cell_type", "r", "p")
+  missing_cols <- setdiff(required_cols, names(corr_results))
+  if (length(missing_cols)) {
+    plot(1, type = "n", axes = FALSE, xlab = "", ylab = "")
+    text(1, 1, paste("Missing columns:", paste(missing_cols, collapse = ", ")), cex = 1.1)
+    return(invisible(NULL))
+  }
+
+  plot_data <- corr_results[corr_results$gene == gene_name, , drop = FALSE]
+
   if (nrow(plot_data) == 0) {
     plot(1, type = "n", axes = FALSE, xlab = "", ylab = "")
-    text(1, 1, paste("基因", gene_name, "未找到"), cex = 1.2)
-    return(invisible())
+    text(1, 1, paste("Gene", gene_name, "not found"), cex = 1.2)
+    return(invisible(NULL))
   }
-  
-  plot_data <- plot_data[order(plot_data$r), ]
-  plot_data$cell_type <- factor(plot_data$cell_type, levels = plot_data$cell_type)
-  
-  plot_data$color <- ifelse(plot_data$p < 0.001, "#E74C3C",
-                            ifelse(plot_data$p < 0.01, "#F39C12",
-                                   ifelse(plot_data$p < 0.05, "#2ECC71", "#95A5A6")))
-  
-  plot_data$size <- ifelse(abs(plot_data$r) >= 0.5, 6,
-                           ifelse(abs(plot_data$r) >= 0.3, 5, 4))
-  
-  plot_data$signif <- ifelse(plot_data$p < 0.001, "***",
-                             ifelse(plot_data$p < 0.01, "**",
-                                    ifelse(plot_data$p < 0.05, "*", "")))
-  
-  x_limit <- max(abs(plot_data$r)) * 1.2
-  
-  p <- ggplot2::ggplot(plot_data, aes(x = r, y = cell_type)) +
-    # 修复geom_segment的size警告
-    geom_segment(aes(x = 0, xend = r, y = cell_type, yend = cell_type),
-                 color = "#BDC3C7", linewidth = 1) +
-    geom_point(aes(color = color, size = size), alpha = 0.85) +
-    geom_text(aes(label = signif, x = r + sign(r) * 0.02 * x_limit),
-              size = 5, color = "black", hjust = 0.5) +
-    scale_color_identity() +
-    scale_size_identity() +
-    geom_vline(xintercept = 0, linetype = "dashed", color = "#95A5A6") +
-    theme_minimal(base_size = 12) +
-    theme(
-      plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-      axis.title = element_text(face = "bold"),
-      axis.text.y = element_text(size = 9),
-      panel.grid.major.y = element_line(color = "#ECF0F1", linewidth = 0.3)
-    ) +
-    labs(
-      title = paste(gene_name, "与免疫细胞相关性"),
-      x = "Spearman相关系数 (r)",
-      y = ""
+
+  plot_data$r <- as.numeric(plot_data$r)
+  plot_data$p <- as.numeric(plot_data$p)
+  plot_data <- plot_data[is.finite(plot_data$r) & is.finite(plot_data$p), , drop = FALSE]
+  if (!nrow(plot_data)) {
+    plot(1, type = "n", axes = FALSE, xlab = "", ylab = "")
+    text(1, 1, "No finite correlation data", cex = 1.1)
+    return(invisible(NULL))
+  }
+
+  color_palette <- c("#ff6f69", "#ffcc5c", "#88d8b0", "#6b5b95", "#355c7d")
+  size_values <- seq(2.5, 5.5, length.out = 5)
+
+  get_color_by_p_value <- function(x) {
+    ifelse(x > 0.8, color_palette[1],
+      ifelse(x > 0.6, color_palette[2],
+        ifelse(x > 0.4, color_palette[3],
+          ifelse(x > 0.2, color_palette[4], color_palette[5])
+        )
+      )
     )
-  
-  return(p)
+  }
+
+  get_point_size_by_r <- function(val) {
+    abs_val <- abs(val)
+    ifelse(abs_val < 0.1, size_values[1],
+      ifelse(abs_val < 0.2, size_values[2],
+        ifelse(abs_val < 0.3, size_values[3],
+          ifelse(abs_val < 0.4, size_values[4], size_values[5])
+        )
+      )
+    )
+  }
+
+  plot_data <- plot_data[order(plot_data$r), , drop = FALSE]
+  plot_data$colorAssigned <- get_color_by_p_value(plot_data$p)
+  plot_data$pointSize <- get_point_size_by_r(plot_data$r)
+
+  x_axis_limit <- ceiling(max(abs(plot_data$r), na.rm = TRUE) * 10) / 10
+  if (!is.finite(x_axis_limit) || x_axis_limit <= 0) x_axis_limit <- 0.1
+
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit({
+    graphics::layout(1)
+    graphics::par(old_par)
+  }, add = TRUE)
+
+  layout_matrix <- matrix(c(1, 1, 1, 1, 1, 0, 2, 0, 3, 0), ncol = 2)
+  graphics::layout(widths = c(8, 2.2), heights = c(1, 2, 1, 2, 1), mat = layout_matrix)
+
+  graphics::par(family = "sans", bg = "white", las = 1, mar = c(5, 18, 4, 4), cex.axis = 1.5, cex.lab = 2)
+  graphics::plot(
+    1,
+    type = "n",
+    xlim = c(-x_axis_limit, x_axis_limit),
+    ylim = c(0.5, nrow(plot_data) + 0.5),
+    xlab = "Correlation Coefficient",
+    ylab = "",
+    yaxt = "n",
+    yaxs = "i",
+    axes = FALSE
+  )
+  graphics::title(main = "Correlation between Gene and Immune Cells", cex.main = 2, col.main = "grey20")
+  graphics::grid(nx = NA, ny = nrow(plot_data), col = "grey85", lty = "dotted", lwd = 1.5)
+  graphics::segments(
+    x0 = plot_data$r,
+    y0 = seq_len(nrow(plot_data)),
+    x1 = 0,
+    y1 = seq_len(nrow(plot_data)),
+    lwd = 5,
+    col = grDevices::adjustcolor("grey20", alpha.f = 0.7)
+  )
+  graphics::points(
+    x = plot_data$r,
+    y = seq_len(nrow(plot_data)),
+    col = plot_data$colorAssigned,
+    pch = 16,
+    cex = plot_data$pointSize
+  )
+  graphics::text(
+    x = graphics::par("usr")[1] - 0.02 * x_axis_limit,
+    y = seq_len(nrow(plot_data)),
+    labels = plot_data$cell_type,
+    adj = 1,
+    xpd = TRUE,
+    cex = 1.5,
+    col = "grey10"
+  )
+
+  p_text <- ifelse(plot_data$p < 0.001, "<0.001", sprintf("%.03f", plot_data$p))
+  graphics::text(
+    x = graphics::par("usr")[2] + 0.02 * x_axis_limit,
+    y = seq_len(nrow(plot_data)),
+    labels = p_text,
+    adj = 0,
+    xpd = TRUE,
+    col = ifelse(plot_data$p < 0.05, "red", "black"),
+    cex = 1.5
+  )
+  graphics::axis(side = 1, tick = FALSE, col.axis = "grey20", cex.axis = 1.5)
+
+  graphics::par(mar = c(0, 4, 3, 4))
+  graphics::plot(1, type = "n", axes = FALSE, xlab = "", ylab = "")
+  graphics::legend(
+    "left",
+    legend = c(0.1, 0.2, 0.3, 0.4, 0.5),
+    col = "black",
+    pt.cex = size_values,
+    pch = 16,
+    bty = "n",
+    cex = 2,
+    title = "abs(r)",
+    text.col = "grey10",
+    title.col = "grey10",
+    border = NA
+  )
+
+  graphics::par(mar = c(0, 6, 4, 6), cex.axis = 1.5, cex.main = 2)
+  graphics::barplot(
+    rep(1, 5),
+    horiz = TRUE,
+    space = 0,
+    border = NA,
+    col = color_palette,
+    xaxt = "n",
+    yaxt = "n",
+    xlab = "",
+    ylab = "",
+    main = "p value",
+    col.main = "grey10",
+    font.main = 2
+  )
+  graphics::axis(side = 4, at = 0:5, labels = c(1, 0.8, 0.6, 0.4, 0.2, 0), tick = FALSE, col.axis = "grey20")
+
+  invisible(NULL)
 }
 
 # ============================================================
@@ -614,6 +723,20 @@ immune_ui <- function(id) {
       .immune-result-card {
         height: 300px;
         overflow: hidden;
+      }
+      .immune-result-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .immune-result-header h4 {
+        margin-bottom: 0;
+      }
+      .immune-result-header .btn {
+        font-size: 11px;
+        padding: 2px 10px;
       }
       .immune-card h4,
       .immune-plot-card h4,
@@ -821,6 +944,28 @@ immune_ui <- function(id) {
         margin-left: 0;
         margin-bottom: 4px;
       }
+      .immune-gene-scatter-nav {
+        margin-top: 8px;
+        border-top: 1px solid #d7dee2;
+        padding-top: 8px;
+      }
+      .immune-gene-scatter-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #263238;
+        margin-bottom: 6px;
+      }
+      .immune-gene-scatter-nav .nav-pills > li > a {
+        padding: 3px 8px;
+        font-size: 11px;
+        border-radius: 3px;
+      }
+      .immune-gene-scatter-panel {
+        margin-top: 8px;
+        border: 1px solid #d7dee2;
+        background: #ffffff;
+        padding: 6px;
+      }
     ")),
 
     fluidRow(
@@ -900,7 +1045,11 @@ immune_ui <- function(id) {
         style = "padding: 4px;",
         div(
           class = "immune-result-card",
-          h4("结果预览"),
+          div(
+            class = "immune-result-header",
+            h4("结果预览"),
+            uiOutput(ns("downloadAllFilesUI"))
+          ),
           div(
             class = "immune-result-panel",
             tabsetPanel(
@@ -983,7 +1132,7 @@ immune_server <- function(id) {
       output$status <- renderText("⏳ 分析运行中，请稍候...")
       
       # 修复 showNotification 警告：使用 type 参数
-      showNotification("正在运行免疫浸润分析...", type = "message", duration = 3)
+      showNotification("正在运行免疫浸润分析...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       
       Sys.sleep(0.5)
       mock <- generate_mock_data()
@@ -1373,6 +1522,20 @@ immune_ui <- function(id) {
         height: 300px;
         overflow: hidden;
       }
+      .immune-result-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .immune-result-header h4 {
+        margin-bottom: 0;
+      }
+      .immune-result-header .btn {
+        font-size: 11px;
+        padding: 2px 10px;
+      }
       .immune-card h4,
       .immune-plot-card h4,
       .immune-result-card h4 {
@@ -1671,7 +1834,7 @@ immune_ui <- function(id) {
               value = "forest",
               immune_upload_box("forestExprFile", "forestExprFileStatus", "表达矩阵 / geneexp.csv", c(".csv", ".txt", ".tsv")),
               immune_upload_box("forestGeneFile", "forestGeneFileStatus", "关键基因列表", c(".txt", ".csv", ".tsv")),
-              div(class = "immune-compact-section", p("根据关键基因表达计算组间差异、AUC 和 95% CI，并绘制森林图；样本名需包含 _con/_tre 后缀以识别分组。", class = "immune-hint")),
+              div(class = "immune-compact-section", p("根据关键基因表达计算 P 值、HR 和 95% CI，并绘制左侧表格+右侧森林图；样本名需包含 _con/_tre 后缀以识别分组。", class = "immune-hint")),
               actionButton(ns("runForest"), "生成关键基因森林图", class = "btn-success btn-sm immune-run-btn")
             ),
             tabPanel(
@@ -1718,7 +1881,11 @@ immune_ui <- function(id) {
         style = "padding: 4px;",
         div(
           class = "immune-result-card",
-          h4("结果预览"),
+          div(
+            class = "immune-result-header",
+            h4("结果预览"),
+            uiOutput(ns("downloadAllFilesUI"))
+          ),
           div(
             class = "immune-result-panel",
             tabsetPanel(
@@ -1738,7 +1905,7 @@ immune_ui <- function(id) {
                     tags$dt("Q3：CIBERSORT 结果文件是什么格式？"),
                     tags$dd("第一列为样本名，其余列为免疫细胞比例。可直接使用免疫浸润分析导出的 CIBERSORT-Results.csv。"),
                     tags$dt("Q4：关键基因HR森林图如何理解？"),
-                    tags$dd("这里按原脚本逻辑展示关键基因的 AUC 及 95% CI，可用于比较关键基因区分两组样本的能力。"),
+                    tags$dd("这里基于关键基因表达与样本分组拟合二分类模型，展示每个基因的 P 值、HR 及 95% CI。HR 大于 1 表示表达升高更偏向实验组，HR 小于 1 表示更偏向对照组。"),
                     tags$dt("Q5：棒棒糖图需要什么输入？"),
                     tags$dd("棒棒糖图使用基因与免疫细胞相关性结果，显示一个基因与各免疫细胞的 Spearman 相关系数和显著性。")
                   )
@@ -1801,9 +1968,10 @@ immune_server <- function(id) {
       path <- file$datapath[[1]]
       ext <- tolower(tools::file_ext(file$name[[1]] %||% path))
       sep <- if (ext == "csv") "," else "\t"
+      quote_chars <- if (ext == "csv") "\"" else ""
       tab <- tryCatch(
-        utils::read.table(path, header = FALSE, sep = sep, stringsAsFactors = FALSE, check.names = FALSE, quote = "", comment.char = ""),
-        error = function(e) utils::read.table(path, header = FALSE, sep = "", stringsAsFactors = FALSE, check.names = FALSE, quote = "", comment.char = "")
+        utils::read.table(path, header = FALSE, sep = sep, stringsAsFactors = FALSE, check.names = FALSE, quote = quote_chars, comment.char = ""),
+        error = function(e) utils::read.table(path, header = FALSE, sep = "", stringsAsFactors = FALSE, check.names = FALSE, quote = quote_chars, comment.char = "")
       )
       vals <- trimws(as.character(tab[[1]]))
       vals[nzchar(vals) & !is.na(vals)]
@@ -1816,9 +1984,10 @@ immune_server <- function(id) {
       path <- file$datapath[[1]]
       ext <- tolower(tools::file_ext(file$name[[1]] %||% path))
       sep <- if (ext == "csv") "," else "\t"
+      quote_chars <- if (ext == "csv") "\"" else ""
       mat <- tryCatch(
-        utils::read.table(path, header = TRUE, sep = sep, row.names = 1, check.names = FALSE, quote = "", comment.char = ""),
-        error = function(e) utils::read.table(path, header = TRUE, sep = "", row.names = 1, check.names = FALSE, quote = "", comment.char = "")
+        utils::read.table(path, header = TRUE, sep = sep, row.names = 1, check.names = FALSE, quote = quote_chars, comment.char = ""),
+        error = function(e) utils::read.table(path, header = TRUE, sep = "", row.names = 1, check.names = FALSE, quote = quote_chars, comment.char = "")
       )
       mat <- as.matrix(mat)
       suppressWarnings(storage.mode(mat) <- "numeric")
@@ -1835,9 +2004,10 @@ immune_server <- function(id) {
         path <- file$datapath[[1]]
         ext <- tolower(tools::file_ext(file$name[[1]] %||% path))
         sep <- if (ext == "csv") "," else "\t"
+        quote_chars <- if (ext == "csv") "\"" else ""
         tab <- tryCatch(
-          utils::read.table(path, header = TRUE, sep = sep, row.names = 1, check.names = FALSE, quote = "", comment.char = ""),
-          error = function(e) utils::read.table(path, header = TRUE, sep = "", row.names = 1, check.names = FALSE, quote = "", comment.char = "")
+          utils::read.table(path, header = TRUE, sep = sep, row.names = 1, check.names = FALSE, quote = quote_chars, comment.char = ""),
+          error = function(e) utils::read.table(path, header = TRUE, sep = "", row.names = 1, check.names = FALSE, quote = quote_chars, comment.char = "")
         )
         mat <- as.matrix(tab)
         suppressWarnings(storage.mode(mat) <- "numeric")
@@ -1989,9 +2159,29 @@ immune_server <- function(id) {
         se_value <- tryCatch(stats::t.test(values ~ group_info)$stderr, error = function(e) NA_real_)
         roc_obj <- tryCatch(pROC::roc(y, values, quiet = TRUE), error = function(e) NULL)
         ci_vec <- if (!is.null(roc_obj)) as.numeric(pROC::ci.auc(roc_obj, method = "bootstrap", boot.n = 200)) else c(NA_real_, NA_real_, NA_real_)
+        hr_stats <- tryCatch({
+          scaled_values <- as.numeric(scale(values))
+          if (!all(is.finite(scaled_values)) || stats::sd(scaled_values, na.rm = TRUE) == 0) {
+            stop("invalid scaled values")
+          }
+          fit <- stats::glm(y ~ scaled_values, family = stats::binomial())
+          coef_table <- summary(fit)$coefficients
+          beta <- coef_table["scaled_values", "Estimate"]
+          beta_se <- coef_table["scaled_values", "Std. Error"]
+          beta_p <- coef_table["scaled_values", "Pr(>|z|)"]
+          c(
+            HR = exp(beta),
+            HR_Lower_CI = exp(beta - 1.96 * beta_se),
+            HR_Upper_CI = exp(beta + 1.96 * beta_se),
+            Model_P_Value = beta_p
+          )
+        }, error = function(e) c(HR = NA_real_, HR_Lower_CI = NA_real_, HR_Upper_CI = NA_real_, Model_P_Value = NA_real_))
         rows[[length(rows) + 1]] <- data.frame(
           Gene = gene,
-          P_Value = p_value,
+          P_Value = ifelse(is.na(hr_stats[["Model_P_Value"]]), p_value, hr_stats[["Model_P_Value"]]),
+          HR = hr_stats[["HR"]],
+          HR_Lower_CI = hr_stats[["HR_Lower_CI"]],
+          HR_Upper_CI = hr_stats[["HR_Upper_CI"]],
           AUC = ci_vec[2],
           AUC_Lower_CI = ci_vec[1],
           AUC_Upper_CI = ci_vec[3],
@@ -2025,44 +2215,167 @@ immune_server <- function(id) {
 
     plot_empty <- function(message = "请先运行当前步骤") {
       plot.new()
+      if (nzchar(message)) graphics::text(0.5, 0.5, message, col = "#607d8b")
       invisible(NULL)
     }
 
     plot_forest <- function(df) {
       if (is.null(df) || !nrow(df)) return(plot_empty())
-      df <- df[order(df$AUC), , drop = FALSE]
-      df$Gene <- factor(df$Gene, levels = df$Gene)
-      ggplot2::ggplot(df, ggplot2::aes(x = AUC, y = Gene)) +
-        ggplot2::geom_vline(xintercept = 0.5, linetype = "dashed", color = "#90a4ae") +
-        ggplot2::geom_errorbarh(ggplot2::aes(xmin = AUC_Lower_CI, xmax = AUC_Upper_CI), height = 0.18, color = "#455a64") +
-        ggplot2::geom_point(size = 3, color = "#1e88e5") +
-        ggplot2::coord_cartesian(xlim = c(0, 1)) +
-        ggplot2::theme_classic(base_size = 12) +
-        ggplot2::labs(title = "关键基因 AUC 森林图", x = "AUC (95% CI)", y = NULL)
+      df <- df[is.finite(df$HR) & is.finite(df$HR_Lower_CI) & is.finite(df$HR_Upper_CI), , drop = FALSE]
+      if (!nrow(df)) return(plot_empty("暂无可绘制的 HR 结果"))
+
+      fmt_p <- function(x) {
+        ifelse(is.na(x), "NA", ifelse(x < 0.001, "0.000", sprintf("%.3f", x)))
+      }
+      fmt_hr <- function(hr, lower, upper) {
+        ifelse(
+          is.na(hr) | is.na(lower) | is.na(upper),
+          "NA",
+          sprintf("%.2f (%.2f-%.2f)", hr, lower, upper)
+        )
+      }
+
+      n <- nrow(df)
+      y_pos <- rev(seq_len(n))
+      x_min <- min(df$HR_Lower_CI, 1, na.rm = TRUE)
+      x_max <- max(df$HR_Upper_CI, 1, na.rm = TRUE)
+      x_min <- max(0.05, x_min * 0.85)
+      x_max <- x_max * 1.15
+      axis_candidates <- c(0.25, 0.35, 0.5, 0.71, 1, 1.41, 2, 2.82, 4, 5.66, 8)
+      axis_ticks <- axis_candidates[axis_candidates >= x_min & axis_candidates <= x_max]
+      if (!length(axis_ticks)) axis_ticks <- pretty(c(x_min, x_max), n = 5)
+
+      old_par <- graphics::par(no.readonly = TRUE)
+      on.exit({
+        graphics::layout(1)
+        graphics::par(old_par)
+      }, add = TRUE)
+
+      graphics::layout(matrix(c(1, 2), nrow = 1), widths = c(1.05, 1.25))
+      graphics::par(oma = c(0, 0, 3.2, 0))
+
+      graphics::par(mar = c(4, 1.2, 1, 0.2))
+      graphics::plot.new()
+      graphics::plot.window(xlim = c(0, 1), ylim = c(0.4, n + 1.35))
+      header_y <- n + 1
+      graphics::text(0.02, header_y, "Gene", adj = 0, cex = 1.05)
+      graphics::text(0.43, header_y, "P-value", adj = 0.5, cex = 1.05)
+      graphics::text(0.72, header_y, "HR (95% CI)", adj = 0.5, cex = 1.05)
+      graphics::text(0.02, y_pos, df$Gene, adj = 0, cex = 1.02)
+      graphics::text(0.43, y_pos, fmt_p(df$P_Value), adj = 0.5, cex = 1.02)
+      graphics::text(0.72, y_pos, fmt_hr(df$HR, df$HR_Lower_CI, df$HR_Upper_CI), adj = 0.5, cex = 1.02)
+
+      graphics::par(mar = c(4, 0.4, 1, 1.2))
+      graphics::plot.new()
+      graphics::plot.window(xlim = c(x_min, x_max), ylim = c(0.4, n + 1.35), log = "x")
+      graphics::abline(v = 1, col = "#d9d9d9", lwd = 1)
+      graphics::segments(df$HR_Lower_CI, y_pos, df$HR_Upper_CI, y_pos, col = "#0000aa", lwd = 1.2)
+      graphics::points(df$HR, y_pos, pch = 15, col = "#4169e1", bg = "#4169e1", cex = 1.25)
+      graphics::axis(1, at = axis_ticks, labels = axis_ticks, cex.axis = 0.72)
+      graphics::box(bty = "l")
+      graphics::mtext("Hazard Ratio (HR)", side = 1, line = 2.2, cex = 0.8)
+      graphics::mtext("Forest Plot for Genes", outer = TRUE, side = 3, line = 0.7, cex = 1.35, font = 2)
+      invisible(NULL)
     }
 
     plot_gene_scatter_pair <- function(row, expr, immune_mat) {
       common <- intersect(colnames(expr), rownames(immune_mat))
+      gene <- row$gene[[1]]
+      cell_type <- row$cell_type[[1]]
+      corr_value <- as.numeric(row$r[[1]])
+      p_value <- as.numeric(row$p[[1]])
       df <- data.frame(
-        GeneExpr = as.numeric(expr[row$gene[[1]], common]),
-        ImmuneFraction = as.numeric(immune_mat[common, row$cell_type[[1]]])
+        gene_values = as.numeric(expr[gene, common]),
+        immune_values = as.numeric(immune_mat[common, cell_type])
       )
-      ggplot2::ggplot(df, ggplot2::aes(GeneExpr, ImmuneFraction)) +
-        ggplot2::geom_point(size = 2.5, color = "#1e88e5", alpha = 0.8) +
-        ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#e53935", linewidth = 0.8) +
-        ggplot2::theme_classic(base_size = 12) +
+
+      p <- ggplot2::ggplot(df, ggplot2::aes(x = gene_values, y = immune_values)) +
+        ggplot2::geom_point(ggplot2::aes(color = gene_values), size = 4, alpha = 0.8) +
+        ggplot2::geom_smooth(method = "lm", color = "#008EA0", linetype = "solid", linewidth = 1.2) +
         ggplot2::labs(
-          title = paste(row$gene[[1]], "vs", row$cell_type[[1]]),
-          subtitle = sprintf("Spearman r = %.3f, p = %.3g", row$r[[1]], row$p[[1]]),
-          x = paste(row$gene[[1]], "表达量"),
-          y = paste(row$cell_type[[1]], "比例")
+          title = paste(gene, "and", cell_type),
+          subtitle = paste("Spearman's r =", round(corr_value, 2), ", p =", format(p_value, scientific = TRUE)),
+          x = paste(gene, "Expression Level"),
+          y = paste(cell_type, "Infiltration Level")
+        ) +
+        ggplot2::scale_color_viridis_c() +
+        ggplot2::theme_minimal(base_size = 16) +
+        ggplot2::theme(
+          axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, family = "sans"),
+          plot.title = ggplot2::element_text(face = "bold", size = 18, family = "sans", color = "black"),
+          plot.subtitle = ggplot2::element_text(size = 14, family = "sans", color = "black"),
+          axis.title = ggplot2::element_text(face = "bold", size = 14, family = "sans"),
+          axis.text = ggplot2::element_text(size = 12, family = "sans"),
+          panel.grid.major = ggplot2::element_line(color = "#F6EDD9", linewidth = 0.2),
+          panel.grid.minor = ggplot2::element_blank(),
+          legend.position = "none"
         )
+
+      if (requireNamespace("ggExtra", quietly = TRUE)) {
+        return(ggExtra::ggMarginal(p, type = "histogram", fill = "#F6EDD9", size = 5))
+      }
+
+      p
     }
 
     plot_gene_scatter <- function(corr_df, expr, immune_mat) {
       if (is.null(corr_df) || !nrow(corr_df)) return(plot_empty("暂无相关性结果"))
       row <- corr_df[order(corr_df$p, -abs(corr_df$r)), , drop = FALSE][1, ]
       plot_gene_scatter_pair(row, expr, immune_mat)
+    }
+
+    plot_gene_scatter_gene <- function(gene, corr_df, expr, immune_mat) {
+      gene_rows <- corr_df[corr_df$gene == gene, , drop = FALSE]
+      if (!nrow(gene_rows)) return(plot_empty("暂无该基因的相关性结果"))
+
+      common <- intersect(colnames(expr), rownames(immune_mat))
+      expr_values <- as.numeric(expr[gene, common])
+      plot_data <- do.call(rbind, lapply(seq_len(nrow(gene_rows)), function(i) {
+        cell_type <- gene_rows$cell_type[[i]]
+        data.frame(
+          Gene = gene,
+          CellType = cell_type,
+          GeneExpr = expr_values,
+          ImmuneFraction = as.numeric(immune_mat[common, cell_type]),
+          r = gene_rows$r[[i]],
+          p = gene_rows$p[[i]],
+          stringsAsFactors = FALSE
+        )
+      }))
+      label_data <- do.call(rbind, lapply(split(plot_data, plot_data$CellType), function(df) {
+        data.frame(
+          CellType = df$CellType[[1]],
+          GeneExpr = min(df$GeneExpr, na.rm = TRUE),
+          ImmuneFraction = max(df$ImmuneFraction, na.rm = TRUE),
+          label = sprintf("r = %.3f\np = %.3g", df$r[[1]], df$p[[1]]),
+          stringsAsFactors = FALSE
+        )
+      }))
+
+      ggplot2::ggplot(plot_data, ggplot2::aes(GeneExpr, ImmuneFraction)) +
+        ggplot2::geom_point(size = 1.9, color = "#1e88e5", alpha = 0.8) +
+        ggplot2::geom_smooth(method = "lm", se = TRUE, color = "#e53935", linewidth = 0.7) +
+        ggplot2::geom_text(
+          data = label_data,
+          ggplot2::aes(x = GeneExpr, y = ImmuneFraction, label = label),
+          hjust = 0,
+          vjust = 1,
+          size = 3,
+          inherit.aes = FALSE
+        ) +
+        ggplot2::facet_wrap(~ CellType, scales = "free_y", ncol = 3) +
+        ggplot2::theme_bw(base_size = 11) +
+        ggplot2::theme(
+          strip.background = ggplot2::element_rect(fill = "#eef3f7", color = "#cfd8dc"),
+          strip.text = ggplot2::element_text(face = "bold", size = 9),
+          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+          panel.grid.minor = ggplot2::element_blank()
+        ) +
+        ggplot2::labs(
+          title = paste0(gene, " 与免疫细胞相关性"),
+          x = paste0(gene, " 表达量"),
+          y = "免疫细胞比例"
+        )
     }
 
     plot_visual <- function(viz, type = "box") {
@@ -2107,6 +2420,13 @@ immune_server <- function(id) {
       }
       if (identical(key, "inf_corrplot")) return(plot_immune_correlation(res$infiltration$fractions))
       if (identical(key, "gene_scatter")) return(print(plot_gene_scatter(res$gene_corr$corr, res$gene_corr$expr, res$gene_corr$immune)))
+      if (startsWith(key, "gene_scatter_")) {
+        safe_id <- sub("^gene_scatter_", "", key)
+        corr <- res$gene_corr$corr
+        row_index <- which(vapply(seq_len(nrow(corr)), function(i) identical(gene_cell_safe_id(corr$gene[[i]], corr$cell_type[[i]]), safe_id), logical(1)))
+        if (!length(row_index)) return(plot_empty("未找到该图片"))
+        return(print(plot_gene_scatter_pair(corr[row_index[[1]], , drop = FALSE], res$gene_corr$expr, res$gene_corr$immune)))
+      }
       if (identical(key, "forest")) return(print(plot_forest(res$forest$table)))
       if (identical(key, "viz_box")) return(print(plot_visual(res$visual, "box")))
       if (identical(key, "viz_corr")) return(plot_visual(res$visual, "corr"))
@@ -2143,7 +2463,7 @@ immune_server <- function(id) {
     }
 
     observeEvent(input$runInfiltration, {
-      showNotification("正在运行免疫浸润分析...", type = "message", duration = 3)
+      showNotification("正在运行免疫浸润分析...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       tryCatch({
         expr <- read_expression_matrix(input$infExprFile)
         group <- infer_group_info(colnames(expr))
@@ -2168,13 +2488,15 @@ immune_server <- function(id) {
     })
 
     observeEvent(input$runGeneCorr, {
-      showNotification("正在计算基因与免疫细胞相关性...", type = "message", duration = 3)
+      showNotification("正在计算基因与免疫细胞相关性...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       tryCatch({
         expr <- read_expression_matrix(input$corrExprFile)
         genes <- read_first_column(input$corrGeneFile)
         immune_mat <- read_immune_matrix(input$corrImmuneFile)
         corr <- compute_gene_correlations(expr, immune_mat, genes)
-        set_results("gene_corr", list(expr = expr, immune = immune_mat, genes = genes, corr = corr), "gene_scatter")
+        gene_corr_res <- list(expr = expr, immune = immune_mat, genes = genes, corr = corr)
+        set_results("gene_corr", gene_corr_res)
+        active_plot(NULL)
         showNotification("相关性分析完成。", type = "message", duration = 4)
       }, error = function(e) {
         showNotification(paste0("错误: ", conditionMessage(e)), type = "error", duration = 8)
@@ -2182,7 +2504,7 @@ immune_server <- function(id) {
     })
 
     observeEvent(input$runForest, {
-      showNotification("正在生成关键基因森林图...", type = "message", duration = 3)
+      showNotification("正在生成关键基因森林图...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       tryCatch({
         expr <- read_expression_matrix(input$forestExprFile)
         genes <- read_first_column(input$forestGeneFile)
@@ -2200,7 +2522,7 @@ immune_server <- function(id) {
     })
 
     observeEvent(input$runVisual, {
-      showNotification("正在生成免疫可视化...", type = "message", duration = 3)
+      showNotification("正在生成免疫可视化...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       tryCatch({
         immune_mat <- read_immune_matrix(input$vizImmuneFile)
         group <- infer_group_info(rownames(immune_mat))
@@ -2216,7 +2538,7 @@ immune_server <- function(id) {
     })
 
     observeEvent(input$runLollipop, {
-      showNotification("正在生成棒棒糖图...", type = "message", duration = 3)
+      showNotification("正在生成棒棒糖图...", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
       tryCatch({
         corr <- NULL
         if (!is.null(input$lolliCorrFile) && !is.null(input$lolliCorrFile$datapath)) {
@@ -2252,7 +2574,10 @@ immune_server <- function(id) {
         },
         span(type, class = "immune-result-file-type"),
         span(desc, class = "immune-result-file-desc", title = desc),
-        span(class = "immune-result-file-download", downloadButton(ns(download_id), "下载", class = "btn-xs"))
+        span(
+          class = "immune-result-file-download",
+          if (!is.null(download_id)) downloadButton(ns(download_id), "下载", class = "btn-xs")
+        )
       )
     }
 
@@ -2274,13 +2599,22 @@ immune_server <- function(id) {
         add("immune_cell_correlation.png", "PNG", "免疫细胞相关性图", "downloadInfCorrplot", "inf_corrplot")
       }
       if (identical(step, "gene_corr") && !is.null(res$gene_corr)) {
-        add("gene_immune_correlation.csv", "CSV", "基因与免疫细胞 Spearman 相关性", "downloadGeneCorrTable")
-        add("gene_immune_scatter_preview.png", "PNG", "最显著相关性散点图预览", "downloadGeneScatter", "gene_scatter")
-        add("gene_immune_scatter_by_gene.zip", "ZIP", "按基因分文件夹保存全部散点图", "downloadGeneScatterByGene")
+        genes <- unique(res$gene_corr$corr$gene)
+        for (gene in genes) {
+          safe_id <- safe_file_name(gene)
+          add(paste0(safe_id, ".csv"), "CSV", paste0(gene, " 与免疫细胞相关性数据"), paste0("downloadGeneCorrCsv_", safe_id))
+        }
+        corr <- res$gene_corr$corr[order(res$gene_corr$corr$gene, res$gene_corr$corr$cell_type), , drop = FALSE]
+        for (row_index in seq_len(nrow(corr))) {
+          gene <- corr$gene[[row_index]]
+          cell_type <- corr$cell_type[[row_index]]
+          safe_id <- gene_cell_safe_id(gene, cell_type)
+          add(paste0(safe_id, ".png"), "PNG", paste0(gene, " - ", cell_type, " 散点图"), paste0("downloadGeneScatter_", safe_id), paste0("gene_scatter_", safe_id))
+        }
       }
       if (identical(step, "forest") && !is.null(res$forest)) {
-        add("key_gene_auc_results.csv", "CSV", "关键基因差异/AUC统计表", "downloadForestTable")
-        add("key_gene_forest.png", "PNG", "关键基因 AUC 森林图", "downloadForestPlot", "forest")
+        add("key_gene_hr_results.csv", "CSV", "关键基因 P值/HR/AUC 统计表", "downloadForestTable")
+        add("key_gene_forest.png", "PNG", "关键基因 HR 森林图", "downloadForestPlot", "forest")
       }
       if (identical(step, "visual") && !is.null(res$visual)) {
         add("barplot_data_long.csv", "CSV", "免疫细胞长格式数据", "downloadVizLong")
@@ -2304,6 +2638,49 @@ immune_server <- function(id) {
         return(NULL)
       }
       do.call(div, c(list(class = "immune-result-file-list"), rows))
+    })
+
+    output$downloadAllFilesUI <- renderUI({
+      rows <- rows_for_step(active_step())
+      if (!length(rows)) {
+        return(NULL)
+      }
+      downloadButton(ns("downloadAllImmuneFiles"), "下载全部文件", class = "btn-primary btn-xs")
+    })
+
+    observe({
+      res <- immune_results()$gene_corr
+      if (is.null(res) || is.null(res$corr) || !nrow(res$corr)) return()
+      genes <- unique(res$corr$gene)
+      lapply(genes, function(gene) {
+        local({
+          gene_local <- gene
+          safe_id <- safe_file_name(gene_local)
+          output[[paste0("downloadGeneCorrCsv_", safe_id)]] <- downloadHandler(
+            filename = function() paste0(safe_file_name(gene_local), ".csv"),
+            content = function(file) {
+              utils::write.csv(res$corr[res$corr$gene == gene_local, , drop = FALSE], file, row.names = FALSE)
+            }
+          )
+        })
+      })
+      lapply(seq_len(nrow(res$corr)), function(row_index) {
+        local({
+          row_local <- res$corr[row_index, , drop = FALSE]
+          safe_id <- gene_cell_safe_id(row_local$gene[[1]], row_local$cell_type[[1]])
+          observeEvent(input[[paste0("showImmunePlot_gene_scatter_", safe_id)]], {
+            active_plot(paste0("gene_scatter_", safe_id))
+          }, ignoreInit = TRUE)
+          output[[paste0("downloadGeneScatter_", safe_id)]] <- downloadHandler(
+            filename = function() paste0(safe_id, ".png"),
+            content = function(file) {
+              grDevices::png(file, width = 2100, height = 1500, res = 300)
+              on.exit(grDevices::dev.off(), add = TRUE)
+              print(plot_gene_scatter_pair(row_local, res$expr, res$immune))
+            }
+          )
+        })
+      })
     })
 
     observeEvent(input$showImmunePlot_inf_heatmap, active_plot("inf_heatmap"), ignoreInit = TRUE)
@@ -2370,39 +2747,85 @@ immune_server <- function(id) {
       ifelse(nzchar(x), x, "unnamed")
     }
 
-    write_gene_scatter_zip <- function(file) {
-      res <- immune_results()$gene_corr
-      req(!is.null(res), !is.null(res$corr), nrow(res$corr) > 0)
+    gene_cell_safe_id <- function(gene, cell_type) {
+      paste(safe_file_name(gene), safe_file_name(cell_type), sep = "_")
+    }
+
+    write_gene_corr_artifacts <- function(res, target_dir) {
+      genes <- unique(res$corr$gene)
+      for (gene in genes) {
+        safe_id <- safe_file_name(gene)
+        gene_corr <- res$corr[res$corr$gene == gene, , drop = FALSE]
+        utils::write.csv(gene_corr, file.path(target_dir, paste0(safe_id, ".csv")), row.names = FALSE)
+      }
       corr <- res$corr[order(res$corr$gene, res$corr$cell_type), , drop = FALSE]
-      out_dir <- tempfile("gene_immune_scatter_")
-      dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-      on.exit(unlink(out_dir, recursive = TRUE, force = TRUE), add = TRUE)
-
-      for (i in seq_len(nrow(corr))) {
-        row <- corr[i, , drop = FALSE]
-        gene_dir <- file.path(out_dir, safe_file_name(row$gene[[1]]))
-        dir.create(gene_dir, recursive = TRUE, showWarnings = FALSE)
-        png_file <- file.path(gene_dir, paste0(safe_file_name(row$cell_type[[1]]), ".png"))
-        grDevices::png(png_file, width = 2100, height = 1500, res = 300)
-        print(plot_gene_scatter_pair(row, res$expr, res$immune))
-        grDevices::dev.off()
+      for (row_index in seq_len(nrow(corr))) {
+        row <- corr[row_index, , drop = FALSE]
+        safe_id <- gene_cell_safe_id(row$gene[[1]], row$cell_type[[1]])
+        grDevices::png(file.path(target_dir, paste0(safe_id, ".png")), width = 2100, height = 1500, res = 300)
+        tryCatch(
+          print(plot_gene_scatter_pair(row, res$expr, res$immune)),
+          finally = grDevices::dev.off()
+        )
       }
+    }
 
-      old_wd <- getwd()
-      on.exit(setwd(old_wd), add = TRUE)
-      setwd(out_dir)
-      files <- list.files(".", recursive = TRUE, full.names = FALSE)
-      if (requireNamespace("zip", quietly = TRUE)) {
-        zip::zipr(zipfile = file, files = files)
-      } else {
-        utils::zip(zipfile = file, files = files)
+    write_current_immune_artifacts <- function(target_dir) {
+      res <- immune_results()
+      step <- active_step()
+      if (identical(step, "infiltration") && !is.null(res$infiltration)) {
+        utils::write.csv(res$infiltration$fractions, file.path(target_dir, "CIBERSORT-Results.csv"))
+        utils::write.csv(res$infiltration$summary, file.path(target_dir, "immune_infiltration_summary.csv"), row.names = FALSE)
+        grDevices::png(file.path(target_dir, "immune_heatmap.png"), width = 3200, height = 2400, res = 300)
+        tryCatch(plot_immune_heatmap(res$infiltration$fractions, res$infiltration$group_info), finally = grDevices::dev.off())
+        if (!is.null(res$infiltration$group_info)) {
+          grDevices::png(file.path(target_dir, "immune_boxplot.png"), width = 3200, height = 2400, res = 300)
+          tryCatch(print(plot_immune_boxplot(res$infiltration$fractions, res$infiltration$group_info)), finally = grDevices::dev.off())
+        }
+        grDevices::png(file.path(target_dir, "immune_cell_correlation.png"), width = 3200, height = 2800, res = 300)
+        tryCatch(plot_immune_correlation(res$infiltration$fractions), finally = grDevices::dev.off())
+      } else if (identical(step, "gene_corr") && !is.null(res$gene_corr)) {
+        write_gene_corr_artifacts(res$gene_corr, target_dir)
+      } else if (identical(step, "forest") && !is.null(res$forest)) {
+        utils::write.csv(res$forest$table, file.path(target_dir, "key_gene_hr_results.csv"), row.names = FALSE)
+        grDevices::png(file.path(target_dir, "key_gene_forest.png"), width = 3200, height = 2400, res = 300)
+        tryCatch(print(plot_forest(res$forest$table)), finally = grDevices::dev.off())
+      } else if (identical(step, "visual") && !is.null(res$visual)) {
+        utils::write.csv(res$visual$data_long, file.path(target_dir, "barplot_data_long.csv"), row.names = FALSE)
+        utils::write.csv(res$visual$summary, file.path(target_dir, "boxplot_summary_table.csv"), row.names = FALSE)
+        utils::write.csv(res$visual$p_values, file.path(target_dir, "immune_pvalues.csv"), row.names = FALSE)
+        grDevices::png(file.path(target_dir, "immune_diff_boxplot.png"), width = 3600, height = 2600, res = 300)
+        tryCatch(print(plot_visual(res$visual, "box")), finally = grDevices::dev.off())
+        grDevices::png(file.path(target_dir, "immune_corrplot.png"), width = 3200, height = 3200, res = 300)
+        tryCatch(plot_visual(res$visual, "corr"), finally = grDevices::dev.off())
+        grDevices::png(file.path(target_dir, "immune_ridges_overlay.png"), width = 3600, height = 2600, res = 300)
+        tryCatch(print(plot_visual(res$visual, "ridge")), finally = grDevices::dev.off())
+      } else if (identical(step, "lollipop") && !is.null(res$lollipop)) {
+        utils::write.csv(res$lollipop$corr[res$lollipop$corr$gene == res$lollipop$gene, , drop = FALSE], file.path(target_dir, "lollipop_correlation.csv"), row.names = FALSE)
+        grDevices::png(file.path(target_dir, "gene_immune_lollipop.png"), width = 3200, height = 2400, res = 300)
+        tryCatch(print(plot_immune_lollipop(res$lollipop$corr, res$lollipop$gene)), finally = grDevices::dev.off())
       }
+      list.files(target_dir, recursive = TRUE, full.names = FALSE)
     }
 
     output$downloadInfFractions <- downloadHandler("CIBERSORT-Results.csv", function(file) utils::write.csv(immune_results()$infiltration$fractions, file))
     output$downloadInfSummary <- downloadHandler("immune_infiltration_summary.csv", function(file) utils::write.csv(immune_results()$infiltration$summary, file, row.names = FALSE))
     output$downloadGeneCorrTable <- downloadHandler("gene_immune_correlation.csv", function(file) utils::write.csv(immune_results()$gene_corr$corr, file, row.names = FALSE))
-    output$downloadForestTable <- downloadHandler("key_gene_auc_results.csv", function(file) utils::write.csv(immune_results()$forest$table, file, row.names = FALSE))
+    output$downloadAllImmuneFiles <- downloadHandler(
+      filename = function() paste0("immune_", active_step() %||% "results", "_files.zip"),
+      content = function(file) {
+        bundle_dir <- tempfile("immune_bundle_")
+        dir.create(bundle_dir, recursive = TRUE, showWarnings = FALSE)
+        files <- write_current_immune_artifacts(bundle_dir)
+        if (!length(files)) {
+          utils::write.csv(data.frame(message = "No files available"), file.path(bundle_dir, "README.csv"), row.names = FALSE)
+          files <- "README.csv"
+        }
+        zip::zipr(zipfile = file, files = files, root = bundle_dir)
+      },
+      contentType = "application/zip"
+    )
+    output$downloadForestTable <- downloadHandler("key_gene_hr_results.csv", function(file) utils::write.csv(immune_results()$forest$table, file, row.names = FALSE))
     output$downloadVizLong <- downloadHandler("barplot_data_long.csv", function(file) utils::write.csv(immune_results()$visual$data_long, file, row.names = FALSE))
     output$downloadVizSummary <- downloadHandler("boxplot_summary_table.csv", function(file) utils::write.csv(immune_results()$visual$summary, file, row.names = FALSE))
     output$downloadVizPvalues <- downloadHandler("immune_pvalues.csv", function(file) utils::write.csv(immune_results()$visual$p_values, file, row.names = FALSE))
@@ -2414,8 +2837,6 @@ immune_server <- function(id) {
     output$downloadInfHeatmap <- downloadHandler("immune_heatmap.png", function(file) write_png(file, "inf_heatmap"))
     output$downloadInfBoxplot <- downloadHandler("immune_boxplot.png", function(file) write_png(file, "inf_boxplot"))
     output$downloadInfCorrplot <- downloadHandler("immune_cell_correlation.png", function(file) write_png(file, "inf_corrplot", 3200, 2800))
-    output$downloadGeneScatter <- downloadHandler("gene_immune_scatter_preview.png", function(file) write_png(file, "gene_scatter"))
-    output$downloadGeneScatterByGene <- downloadHandler("gene_immune_scatter_by_gene.zip", function(file) write_gene_scatter_zip(file))
     output$downloadForestPlot <- downloadHandler("key_gene_forest.png", function(file) write_png(file, "forest"))
     output$downloadVizBox <- downloadHandler("immune_diff_boxplot.png", function(file) write_png(file, "viz_box", 3600, 2600))
     output$downloadVizCorr <- downloadHandler("immune_corrplot.png", function(file) write_png(file, "viz_corr", 3200, 3200))

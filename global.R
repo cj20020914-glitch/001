@@ -5,13 +5,39 @@
 # ============================================================
 options(stringsAsFactors = FALSE)
 options(ggrepel.max.overlaps = Inf)
-options(shiny.maxRequestSize = 120 * 1024^2) # 120MB 上传限制
+options(shiny.maxRequestSize = 50 * 1024^3) # 50GB 上传限制
+
+app_cleanup_leaked_resources <- function(force = FALSE, threshold = 96L) {
+  open_connections <- tryCatch(showConnections(all = TRUE), error = function(e) NULL)
+  open_count <- if (is.null(open_connections)) 0L else nrow(open_connections)
+
+  if (!isTRUE(force) && open_count < threshold) {
+    return(invisible(open_count))
+  }
+
+  try(grDevices::graphics.off(), silent = TRUE)
+
+  open_connections <- tryCatch(showConnections(all = TRUE), error = function(e) NULL)
+  if (!is.null(open_connections) && nrow(open_connections)) {
+    connection_ids <- suppressWarnings(as.integer(rownames(open_connections)))
+    connection_classes <- as.character(open_connections[, "class"])
+    closeable <- !is.na(connection_ids) &
+      connection_ids > 2L &
+      connection_classes %in% c("file", "gzfile", "bzfile", "xzfile", "fifo")
+
+    for (connection_id in connection_ids[closeable]) {
+      try(close(getConnection(connection_id)), silent = TRUE)
+    }
+  }
+
+  invisible(open_count)
+}
 
 # ============================================================
 # 2. 应用配置
 # ============================================================
-APP_NAME <- "研析通生物信息学综合分析软件"
-APP_VERSION <- "v1.0"
+APP_NAME <- "转录组数据综合分析系统"
+APP_VERSION <- "V1.0"
 
 EXAMPLE_DATA <- list(
   counts = file.path("data", "geneMatrix.txt"),
@@ -74,6 +100,8 @@ app_preview_datatable <- function(data, page_length = 20, options = list(), ...)
   )
   DT::datatable(data, options = dt_options, ...)
 }
+
+APP_RUNNING_NOTIFICATION_DURATION <- 60
 
 app_start_task_notification <- function(message) {
   shiny::showNotification(
@@ -192,7 +220,7 @@ run_async_task <- function(task,
 
   promise <- promises::future_promise({
     task()
-  })
+  }, seed = TRUE)
 
   promise <- promises::then(
     promise,
@@ -401,7 +429,11 @@ read_gene_list_file <- function(file, sep = NULL, column = 1, header = FALSE) {
   }
 
   genes <- trimws(as.character(gene_data[[column]]))
-  unique(genes[nzchar(genes)])
+  genes <- genes[nzchar(genes)]
+  if (length(genes) > 0 && tolower(genes[1]) %in% c("gene", "genes", "symbol", "gene_symbol", "genesymbol")) {
+    genes <- genes[-1]
+  }
+  unique(genes)
 }
 
 create_shared_data_state <- function() {

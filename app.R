@@ -378,6 +378,11 @@ ui <- fluidPage(
 # 4. Server 逻辑
 # ============================================================
 server <- function(input, output, session) {
+  app_cleanup_leaked_resources(force = FALSE, threshold = 96L)
+  session$onSessionEnded(function() {
+    app_cleanup_leaked_resources(force = TRUE)
+  })
+
   currentPage <- reactiveVal(module_registry[[1]]$id)
   module_server_errors <- reactiveVal(list())
   shared_data <- create_shared_data_state()

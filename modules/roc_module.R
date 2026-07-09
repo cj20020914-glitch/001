@@ -888,7 +888,7 @@ roc_server <- function(id) {
       roc_results(NULL)
       result_df(NULL)
 
-      showNotification("ROC 分析已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = 5)
+      showNotification("ROC 分析已在后台启动，可以切换到其它模块继续操作。", type = "message", duration = APP_RUNNING_NOTIFICATION_DURATION)
 
       run_async_task(
         task = function() {

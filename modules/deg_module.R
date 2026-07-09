@@ -288,6 +288,11 @@ deg_ui <- function(id) {
             border-bottom: 1px solid #d7dee2;
             margin-bottom: 8px;
         }
+        .deg-card .nav-tabs {
+            border-bottom: 1px solid #d7dee2;
+            margin-bottom: 8px;
+        }
+        .deg-card .nav-tabs > li > a,
         .deg-result-panel .nav-tabs > li > a {
             border: none;
             border-radius: 0;
@@ -297,6 +302,9 @@ deg_ui <- function(id) {
             background: transparent;
             font-size: 12px;
         }
+        .deg-card .nav-tabs > li.active > a,
+        .deg-card .nav-tabs > li.active > a:hover,
+        .deg-card .nav-tabs > li.active > a:focus,
         .deg-result-panel .nav-tabs > li.active > a,
         .deg-result-panel .nav-tabs > li.active > a:hover,
         .deg-result-panel .nav-tabs > li.active > a:focus {
@@ -408,188 +416,113 @@ deg_ui <- function(id) {
         tags$div(
           class = "deg-card",
           h4("参数设置"),
-          hr(),
-          div(
-            class = "deg-upload-toolbar",
-            actionButton(ns("exampleBtn"), "示例数据",
-                         class = "btn-primary btn-xs",
-                         style = "font-size: 10px; padding: 2px 10px;"),
-            downloadButton(ns("downloadExampleCounts"), "表达矩阵",
-                           class = "btn-xs",
-                           style = "font-size: 9px; padding: 2px 8px;"),
-            downloadButton(ns("downloadExampleCtrl"), "对照组",
-                           class = "btn-xs",
-                           style = "font-size: 9px; padding: 2px 8px;"),
-            downloadButton(ns("downloadExampleTreat"), "实验组",
-                           class = "btn-xs",
-                           style = "font-size: 9px; padding: 2px 8px;"),
-            actionButton(ns("clearAllFiles"), "清除全部",
-                         class = "btn-danger btn-xs",
-                         style = "font-size: 9px; padding: 1px 6px;")
-          ),
-          tags$div(
-            class = "deg-upload-row",
-            tags$div(
-              id = ns("countFileBox"),
-              class = "deg-upload-box",
+          tabsetPanel(
+            id = ns("degTaskTab"),
+            type = "tabs",
+            tabPanel(
+              "样本类型矫正",
               tags$div(
-                class = "deg-upload-placeholder",
-                span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                tags$span("表达矩阵", class = "deg-upload-title"),
-                tags$span(id = ns("countFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                class = "deg-upload-row",
+                tags$div(
+                  id = ns("sampleTypeExprFileBox"),
+                  class = "deg-upload-box",
+                  tags$div(
+                    class = "deg-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("表达矩阵", class = "deg-upload-title"),
+                    tags$span(id = ns("sampleTypeExprFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                  ),
+                  fileInput(ns("sampleTypeExprFile"), NULL,
+                            accept = c(".csv", ".tsv", ".txt"),
+                            buttonLabel = "浏览",
+                            placeholder = "选择表达矩阵文件")
+                )
               ),
-              fileInput(ns("countFile"), NULL,
-                        accept = c(".csv", ".tsv", ".txt"),
-                        buttonLabel = "浏览",
-                        placeholder = "选择表达矩阵文件")
-            )
-          ),
-          tags$div(
-            class = "deg-upload-row",
-            tags$div(
-              id = ns("ctrlFileBox"),
-              class = "deg-upload-box",
               tags$div(
-                class = "deg-upload-placeholder",
-                span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                tags$span("对照组列表", class = "deg-upload-title"),
-                tags$span(id = ns("ctrlFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                class = "deg-upload-row",
+                tags$div(
+                  id = ns("sampleTypeControlFileBox"),
+                  class = "deg-upload-box",
+                  tags$div(
+                    class = "deg-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("对照组列表", class = "deg-upload-title"),
+                    tags$span(id = ns("sampleTypeControlFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                  ),
+                  fileInput(ns("sampleTypeControlFile"), NULL,
+                            accept = c(".txt", ".csv", ".tsv"),
+                            buttonLabel = "浏览",
+                            placeholder = "选择对照组列表")
+                )
               ),
-              fileInput(ns("ctrlFile"), NULL,
-                        accept = c(".txt"),
-                        buttonLabel = "浏览",
-                        placeholder = "选择对照组列表")
-            )
-          ),
-          tags$div(
-            class = "deg-upload-row",
-            tags$div(
-              id = ns("treatFileBox"),
-              class = "deg-upload-box",
               tags$div(
-                class = "deg-upload-placeholder",
-                span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
-                tags$span("实验组列表", class = "deg-upload-title"),
-                tags$span(id = ns("treatFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                class = "deg-upload-row",
+                tags$div(
+                  id = ns("sampleTypeTreatFileBox"),
+                  class = "deg-upload-box",
+                  tags$div(
+                    class = "deg-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("实验组列表", class = "deg-upload-title"),
+                    tags$span(id = ns("sampleTypeTreatFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                  ),
+                  fileInput(ns("sampleTypeTreatFile"), NULL,
+                            accept = c(".txt", ".csv", ".tsv"),
+                            buttonLabel = "浏览",
+                            placeholder = "选择实验组列表")
+                )
               ),
-              fileInput(ns("treatFile"), NULL,
-                        accept = c(".txt"),
-                        buttonLabel = "浏览",
-                        placeholder = "选择实验组列表")
-            )
-          ),
-          div(
-            class = "deg-param-grid",
-            numericInput(ns("logFC"), "logFC", value = 1, min = 0, max = 5, step = 0.5),
-            selectInput(
-              ns("pValueType"),
-              "P值类型",
-              choices = c("FDR(adj.P.Val)" = "adj.P.Val", "P.Value" = "P.Value"),
-              selected = "adj.P.Val"
+              div(
+                class = "deg-compact-section",
+                span("处理参数", class = "deg-compact-title"),
+                checkboxInput(ns("sampleTypeAutoLog"), "自动判断是否 log2 转换", value = TRUE),
+                checkboxInput(ns("sampleTypeNormalize"), "进行 limma 组间标准化", value = TRUE)
+              ),
+              actionButton(ns("runSampleType"), "生成样本类型矩阵",
+                           class = "btn-success btn-sm",
+                           style = "width: 100%; font-size: 12px; font-weight: bold; padding: 4px 0; margin-bottom: 3px;")
             ),
-            numericInput(ns("adjP"), "阈值", value = 0.05, min = 0.000001, max = 1, step = 0.01)
-          ),
-          div(
-            class = "deg-compact-section",
-            span("热图/PCA分组名称", class = "deg-compact-title"),
-            div(
-              class = "deg-compact-grid",
-              div(class = "deg-mini-control", span("对照组"), textInput(ns("controlGroupName"), NULL, value = "Control")),
-              div(class = "deg-mini-control", span("实验组"), textInput(ns("treatGroupName"), NULL, value = "Treatment"))
-            )
-          ),
-          div(
-            class = "deg-compact-section",
-            span("火山图参数", class = "deg-compact-title"),
-            div(
-              class = "deg-compact-grid",
-              div(class = "deg-mini-control", span("图片宽度"), numericInput(ns("volcanoWidth"), NULL, value = 6.0, min = 2, max = 20, step = 0.5)),
-              div(class = "deg-mini-control", span("图片高度"), numericInput(ns("volcanoHeight"), NULL, value = 8.0, min = 2, max = 20, step = 0.5))
-            )
-          ),
-          div(
-            class = "deg-compact-section",
-            span("字体大小", class = "deg-compact-title"),
-            div(
-              class = "deg-compact-grid",
-              div(class = "deg-mini-control", span("点大小"), numericInput(ns("volcanoPointSize"), NULL, value = 2.0, min = 0.1, max = 10, step = 0.1)),
-              div(class = "deg-mini-control", span("标注"), numericInput(ns("volcanoLabelSize"), NULL, value = 3.0, min = 0.1, max = 10, step = 0.1)),
-              div(class = "deg-mini-control", span("legend字"), numericInput(ns("volcanoLegendTextSize"), NULL, value = 10.0, min = 4, max = 30, step = 0.5)),
-              div(class = "deg-mini-control", span("legend标题"), numericInput(ns("volcanoLegendTitleSize"), NULL, value = 6.0, min = 4, max = 30, step = 0.5))
-            )
-          ),
-          div(
-            class = "deg-color-panel",
-            div(
-              style = "display: flex; align-items: center; gap: 4px; flex-wrap: wrap;",
-              tags$span("颜色:", style = "font-size: 11px; font-weight: bold; color: #2c3e50;"),
+            tabPanel(
+              "差异分析",
               div(
-                style = "display: flex; align-items: center; gap: 2px;",
-                tags$span("不显著", style = "font-size: 10px; color: #808080; font-weight: bold;"),
-                colourInput(ns("colorNS"), NULL, value = "#808080",
-                            showColour = "background", palette = "limited",
-                            width = "25px")
+                class = "deg-upload-toolbar",
+                actionButton(ns("exampleBtn"), "示例数据",
+                             class = "btn-primary btn-xs",
+                             style = "font-size: 10px; padding: 2px 10px;"),
+                downloadButton(ns("downloadExampleCounts"), "表达矩阵",
+                               class = "btn-xs",
+                               style = "font-size: 9px; padding: 2px 8px;"),
+                actionButton(ns("clearAllFiles"), "清除全部",
+                             class = "btn-danger btn-xs",
+                             style = "font-size: 9px; padding: 1px 6px;")
+              ),
+              tags$div(
+                class = "deg-upload-row",
+                tags$div(
+                  id = ns("countFileBox"),
+                  class = "deg-upload-box",
+                  tags$div(
+                    class = "deg-upload-placeholder",
+                    span(class = "glyphicon glyphicon-cloud-upload", style = "color: #a7adb7; font-size: 22px; line-height: 1;"),
+                    tags$span("表达矩阵 / Sample Type Matrix", class = "deg-upload-title"),
+                    tags$span(id = ns("countFileStatus"), "Drop file here or click to upload", class = "deg-upload-status")
+                  ),
+                  fileInput(ns("countFile"), NULL,
+                            accept = c(".csv", ".tsv", ".txt"),
+                            buttonLabel = "浏览",
+                            placeholder = "选择表达矩阵文件")
+                )
               ),
               div(
-                style = "display: flex; align-items: center; gap: 2px;",
-                tags$span("FC显著", style = "font-size: 10px; color: #00A65A; font-weight: bold;"),
-                colourInput(ns("colorFC"), NULL, value = "#00A65A",
-                            showColour = "background", palette = "limited",
-                            width = "25px")
+                class = "deg-param-grid",
+                numericInput(ns("logFC"), "logFC", value = 0.5, min = 0, max = 5, step = 0.1),
+                numericInput(ns("adjP"), "P值", value = 0.05, min = 0.000001, max = 1, step = 0.01)
               ),
-              div(
-                style = "display: flex; align-items: center; gap: 2px;",
-                tags$span("P显著", style = "font-size: 10px; color: #1E88E5; font-weight: bold;"),
-                colourInput(ns("colorP"), NULL, value = "#1E88E5",
-                            showColour = "background", palette = "limited",
-                            width = "25px")
-              ),
-              div(
-                style = "display: flex; align-items: center; gap: 2px;",
-                tags$span("FC和P都显著", style = "font-size: 10px; color: #F44336; font-weight: bold;"),
-                colourInput(ns("colorBoth"), NULL, value = "#F44336",
-                            showColour = "background", palette = "limited",
-                            width = "25px")
-              )
+              actionButton(ns("runDiff"), "运行差异分析",
+                           class = "btn-success btn-sm",
+                           style = "width: 100%; font-size: 12px; font-weight: bold; padding: 4px 0; margin-bottom: 3px;")
             )
-          ),
-          div(
-            class = "deg-compact-section",
-            span("形状", class = "deg-compact-title"),
-            div(
-              class = "deg-compact-grid-4",
-              div(class = "deg-mini-control", span("不显著"), numericInput(ns("shapeNS"), NULL, value = 16, min = 0, max = 25, step = 1)),
-              div(class = "deg-mini-control", span("FC"), numericInput(ns("shapeFC"), NULL, value = 16, min = 0, max = 25, step = 1)),
-              div(class = "deg-mini-control", span("P"), numericInput(ns("shapeP"), NULL, value = 16, min = 0, max = 25, step = 1)),
-              div(class = "deg-mini-control", span("FC和P都显著"), numericInput(ns("shapeBoth"), NULL, value = 16, min = 0, max = 25, step = 1))
-            )
-          ),
-          div(
-            class = "deg-compact-section",
-            div(
-              class = "deg-compact-grid",
-              div(
-                class = "deg-radio-inline",
-                radioButtons(ns("volcanoShowGene"), "基因名", choices = c("显示" = "yes", "不显示" = "no"), selected = "yes", inline = TRUE)
-              ),
-              div(
-                class = "deg-radio-inline",
-                radioButtons(ns("volcanoLabelBox"), "标注box", choices = c("带" = "yes", "不带" = "no"), selected = "yes", inline = TRUE)
-              ),
-              div(
-                class = "deg-radio-inline",
-                radioButtons(ns("volcanoLabelLine"), "标注连线", choices = c("带" = "yes", "不带" = "no"), selected = "no", inline = TRUE)
-              ),
-              div(
-                class = "deg-radio-inline",
-                style = "grid-column: 1 / -1;",
-                radioButtons(ns("volcanoFontFamily"), "字体", choices = c("Times New Roman", "Arial"), selected = "Arial", inline = TRUE)
-              )
-            )
-          ),
-          actionButton(ns("runDiff"), "运行差异分析",
-                       class = "btn-success btn-sm",
-                       style = "width: 100%; font-size: 12px; font-weight: bold; padding: 4px 0; margin-bottom: 3px;")
+          )
         )
       ),
       column(
@@ -632,7 +565,7 @@ deg_ui <- function(id) {
               ),
               tabPanel(
                 "数据预览",
-                DTOutput(ns("resultTable"))
+                uiOutput(ns("degDataPreview"))
               ),
               tabPanel(
                 "Q&A",
@@ -642,27 +575,27 @@ deg_ui <- function(id) {
                     tags$dt("Q1：差异分析的目的是什么？"),
                     tags$dd("差异分析用于从表达矩阵中筛选两组样本之间表达水平显著变化的基因，常作为富集分析、WGCNA、机器学习、ROC 和免疫浸润分析的上游步骤。"),
                     tags$dt("Q2：需要上传哪些文件？"),
-                    tags$dd("需要 3 个文件：表达矩阵、对照组样本列表、实验组样本列表。表达矩阵第一列为 gene symbol，后续列为样本表达值；分组列表每行一个样本名，必须与表达矩阵列名一致。"),
+                    tags$dd("若原始表达矩阵还没有分组后缀，先在“样本类型矫正”上传表达矩阵、对照组列表和实验组列表，生成 Sample Type Matrix；若已经有 _con/_tre 后缀，可直接在“差异分析”上传 1 个表达矩阵文件。"),
                     tags$dt("Q3：表达矩阵格式有什么要求？"),
-                    tags$dd("支持 CSV、TSV 和 TXT。第一列应为基因名，后续列为样本；表达值应为数值型。若样本名不匹配或存在无法识别的数值，系统会提示错误。"),
-                    tags$dt("Q4：logFC、P.Value 和 FDR 如何理解？"),
-                    tags$dd("logFC 表示表达倍数变化的 log2 值；P.Value 是原始 P 值；FDR 是多重检验校正后的 P 值。P < 0.05 和 FDR < 0.05 不是等价关系，FDR 通常更严格。参数区可选择使用 P.Value 或 FDR，并修改对应阈值。"),
-                    tags$dt("Q5：火山图四类点分别代表什么？"),
-                    tags$dd("不显著表示 FC 和 FDR 都未达阈值；FC显著表示仅表达变化幅度达阈值；P显著表示仅统计显著；FC和P都显著表示同时满足两类阈值，是重点关注基因。"),
-                    tags$dt("Q6：火山图参数怎么调整？"),
-                    tags$dd("区域一可以调整图片宽高、点大小、标注大小、legend 字体、四类颜色、四类点形状、标注 box、标注连线和字体。区域二预览、放大图和下载图会共用这些设置。"),
+                    tags$dd("支持 CSV、TSV 和 TXT。第一列应为基因名，后续列为样本；表达值应为数值型。差异分析使用的矩阵中，对照组样本列名需要以 _con 结尾，实验组样本列名需要以 _tre 结尾。"),
+                    tags$dt("Q4：logFC 和 P值如何理解？"),
+                    tags$dd("logFC 表示表达倍数变化的 log2 值；P值使用 limma 输出的原始 P.Value。当前筛选逻辑固定为 abs(logFC) 大于阈值且 P.Value 小于阈值。"),
+                    tags$dt("Q5：火山图三类点分别代表什么？"),
+                    tags$dd("红色表示上调基因，蓝色表示下调基因，灰色表示未同时达到 logFC 和 P值阈值的基因。"),
+                    tags$dt("Q6：为什么只保留两个参数？"),
+                    tags$dd("参考原始差异分析脚本，用户只需要控制 logFC 阈值和 P.Value 阈值，其它绘图参数由后台固定，保证结果格式稳定。"),
                     tags$dt("Q7：火山图中基因标注如何选择？"),
-                    tags$dd("当前默认标注 FC 和所选 P 值类型都显著的基因，并按所选 P 值和 logFC 强度优先展示。若标注过多，可以减小标注字号、关闭标注 box 或提高筛选阈值。"),
+                    tags$dd("当前默认标注 FC 和 P.Value 都显著的基因，并按 P.Value 和 logFC 强度优先展示。若标注过多，可以提高 logFC 或 P值筛选阈值。"),
                     tags$dt("Q8：热图如何解读？"),
                     tags$dd("热图展示显著差异基因在两组样本中的表达模式。颜色代表标准化后的相对表达量，同组样本应呈现相近模式；若样本聚类混乱，建议检查分组和数据质量。"),
                     tags$dt("Q9：PCA 图如何解读？"),
                     tags$dd("PCA 图显示样本整体表达谱的主要变异方向。若对照组与实验组明显分离，说明两组存在较清晰的全局表达差异；若混合严重，可能差异较弱或数据质量需要检查。"),
                     tags$dt("Q10：结果表包含哪些列？"),
-                    tags$dd("结果表包含 Gene、logFC、AveExpr、t、P.Value、adj.P.Val、B 等 limma 输出指标。logFC 表示变化方向和幅度，adj.P.Val 越小代表校正后显著性越强。"),
+                    tags$dd("结果表包含 Gene、logFC、AveExpr、t、P.Value、adj.P.Val、B 等 limma 输出指标。当前模块用 P.Value 作为筛选 P值。"),
                     tags$dt("Q11：没有显著差异基因怎么办？"),
-                    tags$dd("可以检查样本分组是否正确、样本量是否过少、表达矩阵是否已标准化，或适当放宽 logFC/FDR 阈值。若仍无结果，可能说明该比较下整体差异确实较弱。"),
+                    tags$dd("可以检查样本分组是否正确、样本量是否过少、表达矩阵是否已标准化，或适当放宽 logFC/P值阈值。若仍无结果，可能说明该比较下整体差异确实较弱。"),
                     tags$dt("Q12：结果文件如何使用？"),
-                    tags$dd("diff_results CSV 可用于查看显著差异基因详情；up/down gene TXT 可进入富集分析、Venn 交集和机器学习筛选；volcano、heatmap、pca PNG 可用于结果汇报和论文图初稿。")
+                    tags$dd("Sample Type Matrix 可继续用于差异分析和机器学习提取特征值；diff_results CSV 可用于查看显著差异基因详情；up/down gene TXT 可进入富集分析、Venn 交集和机器学习筛选；volcano、heatmap、pca PNG 可用于结果汇报和论文图初稿。")
                   )
                 )
               )
@@ -684,8 +617,27 @@ deg_server <- function(id) {
     
     # ---- 存储分析结果 ----
     analysisResults <- reactiveVal(NULL)
+    sample_type_result <- reactiveVal(NULL)
+    sample_type_running <- reactiveVal(FALSE)
     active_deg_plot <- reactiveVal("volcano")
     download_deg_plot <- reactiveVal("volcano")
+
+    deg_set_upload_status <- function(status_id, label) {
+      label <- gsub("\\\\", "\\\\\\\\", label)
+      label <- gsub('"', '\\"', label, fixed = TRUE)
+      shinyjs::runjs(sprintf('$("#%s").text("%s")', ns(status_id), label))
+    }
+
+    deg_upload_ref <- function(file) {
+      if (is.null(file) || is.null(file$datapath) || is.null(file$name)) {
+        stop("未提供文件。", call. = FALSE)
+      }
+      data.frame(
+        datapath = as.character(file$datapath[[1]]),
+        name = as.character(file$name[[1]]),
+        stringsAsFactors = FALSE
+      )
+    }
 
     deg_plot_label <- function(plot_key) {
       labels <- c(
@@ -715,12 +667,11 @@ deg_server <- function(id) {
     }
 
     deg_p_value_column <- function() {
-      selected <- input$pValueType %||% "adj.P.Val"
-      if (selected %in% c("P.Value", "adj.P.Val")) selected else "adj.P.Val"
+      "P.Value"
     }
 
     deg_p_value_label <- function() {
-      if (identical(deg_p_value_column(), "P.Value")) "P-value" else "FDR"
+      "P-value"
     }
 
     deg_p_cutoff <- function() {
@@ -728,20 +679,7 @@ deg_server <- function(id) {
     }
 
     deg_group_labels <- function() {
-      control_label <- trimws(input$controlGroupName %||% "")
-      treat_label <- trimws(input$treatGroupName %||% "")
-
-      if (!nzchar(control_label)) {
-        control_label <- "Control"
-      }
-      if (!nzchar(treat_label)) {
-        treat_label <- "Treatment"
-      }
-      if (identical(control_label, treat_label)) {
-        treat_label <- paste0(treat_label, "_2")
-      }
-
-      c(control = control_label, treatment = treat_label)
+      c(control = "Control", treatment = "Treatment")
     }
 
     deg_group_factor <- function(res) {
@@ -757,11 +695,223 @@ deg_server <- function(id) {
       stats::setNames(c(control_color, treatment_color), unname(labels))
     }
 
+    deg_prepare_expression_matrix <- function(count_file) {
+      expr_matrix <- read_expression_matrix(count_file)
+
+      if (any(is.na(expr_matrix))) {
+        stop("表达矩阵中含有无法识别的数值，请检查数据", call. = FALSE)
+      }
+
+      expr_matrix <- limma::avereps(expr_matrix)
+
+      sample_names <- colnames(expr_matrix)
+      ctrl_samples <- sample_names[grepl("_con$", sample_names, ignore.case = TRUE)]
+      treat_samples <- sample_names[grepl("_tre$", sample_names, ignore.case = TRUE)]
+
+      if (!length(ctrl_samples) || !length(treat_samples)) {
+        stop("表达矩阵列名需要带样本类型后缀：对照组以 _con 结尾，实验组以 _tre 结尾。", call. = FALSE)
+      }
+      if (length(ctrl_samples) + length(treat_samples) != ncol(expr_matrix)) {
+        unknown <- setdiff(sample_names, c(ctrl_samples, treat_samples))
+        stop(paste0("存在无法识别分组的样本列：", paste(unknown, collapse = ", "),
+                    "。请将列名改为 *_con 或 *_tre。"), call. = FALSE)
+      }
+
+      qx <- as.numeric(stats::quantile(expr_matrix, probs = c(0, 0.25, 0.5, 0.75, 0.99, 1), na.rm = TRUE))
+      need_log <- (qx[5] > 100) || ((qx[6] - qx[1]) > 50 && qx[2] > 0)
+      if (isTRUE(need_log)) {
+        expr_matrix[expr_matrix < 0] <- 0
+        expr_matrix <- log2(expr_matrix + 1)
+      }
+
+      expr_matrix <- suppressWarnings(limma::normalizeBetweenArrays(expr_matrix, method = "quantile"))
+      expr_matrix[is.na(expr_matrix)] <- 0
+
+      data_ctrl <- expr_matrix[, ctrl_samples, drop = FALSE]
+      data_treat <- expr_matrix[, treat_samples, drop = FALSE]
+      combined_expr <- cbind(data_ctrl, data_treat)
+
+      list(
+        combined = combined_expr,
+        n_ctrl = ncol(data_ctrl),
+        n_treat = ncol(data_treat),
+        ctrl_samples = ctrl_samples,
+        treat_samples = treat_samples,
+        log_transformed = need_log
+      )
+    }
+
+    deg_process_sample_type_matrix <- function(expr_file,
+                                               control_file,
+                                               treat_file,
+                                               auto_log = TRUE,
+                                               normalize = TRUE) {
+      upload_path <- function(file) {
+        if (is.null(file)) {
+          stop("未提供文件。", call. = FALSE)
+        }
+        if ((is.list(file) || is.data.frame(file)) && !is.null(file$datapath)) {
+          path <- as.character(file$datapath[[1]])
+        } else {
+          path <- as.character(file)[[1]]
+        }
+        if (!file.exists(path)) {
+          stop(paste0("文件不存在：", path), call. = FALSE)
+        }
+        path
+      }
+
+      upload_name <- function(file) {
+        if ((is.list(file) || is.data.frame(file)) && !is.null(file$name)) {
+          return(as.character(file$name[[1]]))
+        }
+        basename(upload_path(file))
+      }
+
+      table_separator <- function(file) {
+        ext <- tolower(tools::file_ext(upload_name(file)))
+        if (identical(ext, "csv")) "," else "\t"
+      }
+
+      read_group_samples <- function(file) {
+        sample_data <- utils::read.table(
+          upload_path(file),
+          sep = table_separator(file),
+          header = FALSE,
+          stringsAsFactors = FALSE,
+          check.names = FALSE,
+          comment.char = "",
+          quote = "\""
+        )
+        if (!nrow(sample_data) || !ncol(sample_data)) {
+          stop("样本分组文件为空。", call. = FALSE)
+        }
+        samples <- trimws(as.character(sample_data[[1]]))
+        unique(samples[nzchar(samples)])
+      }
+
+      clean_group_samples <- function(samples, available_samples) {
+        samples <- trimws(as.character(samples))
+        samples <- samples[nzchar(samples)]
+        if (length(samples) > 1 &&
+            !samples[[1]] %in% available_samples &&
+            tolower(samples[[1]]) %in% c("sample", "samples", "id", "sampleid", "sample_id", "gsm")) {
+          samples <- samples[-1]
+        }
+        stripped <- sub("_(con|ctrl|control|tre|treat|case|disease)$", "", samples, ignore.case = TRUE)
+        if (sum(stripped %in% available_samples) > sum(samples %in% available_samples)) {
+          samples <- stripped
+        }
+        unique(samples)
+      }
+
+      validate_inputs <- function(expr_matrix, ctrl_samples, treat_samples) {
+        errors <- character()
+        if (!is.matrix(expr_matrix) || !is.numeric(expr_matrix)) {
+          errors <- c(errors, "表达矩阵必须为数值矩阵。")
+        }
+        if (nrow(expr_matrix) < 1 || ncol(expr_matrix) < 2) {
+          errors <- c(errors, "表达矩阵至少需要1个基因和2个样本。")
+        }
+        if (!length(ctrl_samples) || !length(treat_samples)) {
+          errors <- c(errors, "对照组或实验组样本列表为空。")
+        }
+        overlap_samples <- intersect(ctrl_samples, treat_samples)
+        if (length(overlap_samples)) {
+          errors <- c(errors, paste0("对照组和实验组样本重复：", paste(overlap_samples, collapse = ", ")))
+        }
+        missing_ctrl <- setdiff(ctrl_samples, colnames(expr_matrix))
+        missing_treat <- setdiff(treat_samples, colnames(expr_matrix))
+        if (length(missing_ctrl)) {
+          errors <- c(errors, paste0("对照组样本不在表达矩阵中：", paste(missing_ctrl, collapse = ", ")))
+        }
+        if (length(missing_treat)) {
+          errors <- c(errors, paste0("实验组样本不在表达矩阵中：", paste(missing_treat, collapse = ", ")))
+        }
+        if (length(errors)) {
+          stop(paste(errors, collapse = "\n"), call. = FALSE)
+        }
+        invisible(TRUE)
+      }
+
+      raw_data <- utils::read.table(
+        upload_path(expr_file),
+        sep = table_separator(expr_file),
+        header = TRUE,
+        check.names = FALSE,
+        stringsAsFactors = FALSE,
+        comment.char = "",
+        quote = "\""
+      )
+      if (!nrow(raw_data) || ncol(raw_data) < 3) {
+        stop("表达矩阵为空或样本列不足。", call. = FALSE)
+      }
+
+      gene_ids <- trimws(as.character(raw_data[[1]]))
+      expr_matrix <- as.matrix(raw_data[, -1, drop = FALSE])
+      suppressWarnings(storage.mode(expr_matrix) <- "numeric")
+      rownames(expr_matrix) <- gene_ids
+
+      if (any(is.na(expr_matrix))) {
+        stop("表达矩阵中含有无法识别的数值，请检查输入文件。", call. = FALSE)
+      }
+
+      expr_matrix <- limma::avereps(expr_matrix)
+      qx <- as.numeric(stats::quantile(expr_matrix, probs = c(0, 0.25, 0.5, 0.75, 0.99, 1), na.rm = TRUE))
+      need_log <- isTRUE(auto_log) && ((qx[5] > 100) || ((qx[6] - qx[1]) > 50 && qx[2] > 0))
+      if (need_log) {
+        expr_matrix[expr_matrix < 0] <- 0
+        expr_matrix <- log2(expr_matrix + 1)
+      }
+
+      if (isTRUE(normalize)) {
+        expr_matrix <- limma::normalizeBetweenArrays(expr_matrix)
+      }
+      expr_matrix[is.na(expr_matrix)] <- 0
+
+      ctrl_samples <- clean_group_samples(read_group_samples(control_file), colnames(expr_matrix))
+      treat_samples <- clean_group_samples(read_group_samples(treat_file), colnames(expr_matrix))
+      validate_inputs(expr_matrix, ctrl_samples, treat_samples)
+
+      control_data <- expr_matrix[, ctrl_samples, drop = FALSE]
+      treat_data <- expr_matrix[, treat_samples, drop = FALSE]
+      combined_data <- cbind(control_data, treat_data)
+      num_control <- ncol(control_data)
+      num_treat <- ncol(treat_data)
+      colnames(combined_data) <- paste0(colnames(combined_data), "_", c(rep("con", num_control), rep("tre", num_treat)))
+
+      final_df <- data.frame(
+        GeneName = rownames(combined_data),
+        combined_data,
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+
+      summary_df <- data.frame(
+        项目 = c("原始基因数", "去重后基因数", "对照组样本数(con)", "实验组样本数(tre)", "总样本数", "是否执行log2", "是否执行标准化"),
+        数值 = c(length(gene_ids), nrow(combined_data), num_control, num_treat, ncol(combined_data), if (need_log) "是" else "否", if (isTRUE(normalize)) "是" else "否"),
+        stringsAsFactors = FALSE
+      )
+
+      summary_lines <- c(
+        paste("Number of control samples (con):", num_control),
+        paste("Number of treatment samples (tre):", num_treat),
+        paste("Total samples:", ncol(combined_data)),
+        paste("Original genes:", length(gene_ids)),
+        paste("Genes after avereps:", nrow(combined_data)),
+        paste("Log2 transformed:", if (need_log) "yes" else "no"),
+        paste("Normalized:", if (isTRUE(normalize)) "yes" else "no")
+      )
+
+      list(matrix = final_df, summary = summary_df, summary_lines = summary_lines)
+    }
+    environment(deg_process_sample_type_matrix) <- globalenv()
+
     deg_plot_defaults <- function(plot_key) {
       if (identical(plot_key, "volcano")) {
         return(list(
-          width = deg_clean_number(input$volcanoWidth, 6, 2, 20),
-          height = deg_clean_number(input$volcanoHeight, 8, 2, 20)
+          width = 8,
+          height = 8
         ))
       }
 
@@ -774,128 +924,61 @@ deg_server <- function(id) {
 
     get_deg_plot_download_size <- function(default_width = 7, default_height = 5) {
       list(
-        width = deg_clean_number(input$downloadDegPlotWidth, default_width, 2, 20),
-        height = deg_clean_number(input$downloadDegPlotHeight, default_height, 2, 20),
-        dpi = as.integer(round(deg_clean_number(input$downloadDegPlotDpi, 300, 72, 600)))
+        width = default_width,
+        height = default_height,
+        dpi = 300L
       )
     }
 
     show_deg_plot_download_modal <- function(plot_key) {
       download_deg_plot(plot_key)
-      defaults <- deg_plot_defaults(plot_key)
-
-      showModal(
-        modalDialog(
-          title = paste0("下载", deg_plot_label(plot_key)),
-          p("设置导出图片尺寸后点击下载。单位为英寸，DPI 用于控制分辨率。",
-            style = "color: #607d8b; font-size: 12px; margin: 0 0 8px 0;"),
-          div(
-            class = "deg-download-size-controls",
-            numericInput(ns("downloadDegPlotWidth"), "宽(in)", value = defaults$width, min = 2, max = 20, step = 0.5),
-            numericInput(ns("downloadDegPlotHeight"), "高(in)", value = defaults$height, min = 2, max = 20, step = 0.5),
-            numericInput(ns("downloadDegPlotDpi"), "DPI", value = 300, min = 72, max = 600, step = 50)
-          ),
-          footer = tagList(
-            modalButton("取消"),
-            downloadButton(ns("downloadDegModalPNG"), "下载PNG", class = "btn-primary")
-          ),
-          easyClose = TRUE
-        )
-      )
+      shinyjs::click("downloadDegModalPNG")
     }
 
     make_volcano_plot <- function(res, point_size = NULL, base_size = 13) {
-      point_size <- deg_clean_number(point_size %||% input$volcanoPointSize, 2, 0.1, 10)
-      label_size <- deg_clean_number(input$volcanoLabelSize, 3, 0.1, 10)
-      legend_text_size <- deg_clean_number(input$volcanoLegendTextSize, 10, 4, 30)
-      legend_title_size <- deg_clean_number(input$volcanoLegendTitleSize, 6, 4, 30)
-      font_family <- input$volcanoFontFamily %||% "Arial"
-
-      category_levels <- c("不显著", "FC显著", "P显著", "FC和P都显著")
-      category_colors <- c(
-        "不显著" = input$colorNS %||% "#808080",
-        "FC显著" = input$colorFC %||% "#00A65A",
-        "P显著" = input$colorP %||% "#1E88E5",
-        "FC和P都显著" = input$colorBoth %||% "#F44336"
-      )
-      category_shapes <- c(
-        "不显著" = as.integer(round(deg_clean_number(input$shapeNS, 16, 0, 25))),
-        "FC显著" = as.integer(round(deg_clean_number(input$shapeFC, 16, 0, 25))),
-        "P显著" = as.integer(round(deg_clean_number(input$shapeP, 16, 0, 25))),
-        "FC和P都显著" = as.integer(round(deg_clean_number(input$shapeBoth, 16, 0, 25)))
-      )
-
+      point_size <- deg_clean_number(point_size %||% 2, 2, 0.1, 10)
       df <- res$all
       df$Gene <- rownames(df)
       p_col <- deg_p_value_column()
-      p_values <- pmax(df[[p_col]], .Machine$double.xmin)
-      df$PForPlot <- p_values
-      fc_sig <- abs(df$logFC) > input$logFC
-      p_sig <- df[[p_col]] < deg_p_cutoff()
-      df$Significance <- factor(
-        ifelse(
-          fc_sig & p_sig, "FC和P都显著",
-          ifelse(fc_sig, "FC显著", ifelse(p_sig, "P显著", "不显著"))
-        ),
-        levels = category_levels
-      )
+      df$PForPlot <- pmax(df[[p_col]], .Machine$double.xmin)
 
-      p <- ggplot(df, aes(x = logFC, y = -log10(PForPlot), color = Significance, shape = Significance)) +
-        geom_point(size = point_size, alpha = 0.75) +
-        scale_color_manual(values = category_colors, drop = FALSE, name = "Significant") +
-        scale_shape_manual(values = category_shapes, drop = FALSE, name = "Significant") +
+      sig_degs <- df[with(df, abs(logFC) > input$logFC & PForPlot < deg_p_cutoff()), , drop = FALSE]
+      up_top <- rownames(sig_degs)[order(-sig_degs$logFC)]
+      down_top <- rownames(sig_degs)[order(sig_degs$logFC)]
+      label_genes <- unique(c(utils::head(up_top, 25), utils::head(down_top, 25)))
+      df$label <- ifelse(df$Gene %in% label_genes, df$Gene, "")
+
+      df$Group <- "Not Significant"
+      df$Group[df$logFC > input$logFC & df$PForPlot < deg_p_cutoff()] <- "Up regulated"
+      df$Group[df$logFC < -input$logFC & df$PForPlot < deg_p_cutoff()] <- "Down regulated"
+      df$Group <- factor(df$Group, levels = c("Up regulated", "Down regulated", "Not Significant"))
+
+      ggplot(df, aes(x = logFC, y = -log10(PForPlot), color = Group)) +
+        geom_point(alpha = 0.7, size = point_size) +
+        ggrepel::geom_text_repel(
+          aes(label = label),
+          size = 3,
+          max.overlaps = 50,
+          box.padding = 0.3,
+          point.padding = 0.2,
+          segment.color = "grey50",
+          show.legend = FALSE
+        ) +
+        scale_color_manual(values = c(
+          "Up regulated" = "#FF4500",
+          "Down regulated" = "#1E90FF",
+          "Not Significant" = "#808080"
+        )) +
+        geom_vline(xintercept = c(-input$logFC, input$logFC), linetype = "dashed", color = "black") +
+        geom_hline(yintercept = -log10(deg_p_cutoff()), linetype = "dashed", color = "black") +
         labs(
-          title = "Volcano Plot",
+          title = "Volcano Plot with Top 25 Genes Labeled",
           x = "Log2 Fold Change",
-          y = paste0("-Log10 ", deg_p_value_label())
+          y = "-Log10 Adjusted P-value"
         ) +
         theme_minimal(base_size = base_size) +
-        theme(
-          text = element_text(family = font_family),
-          plot.title = element_text(face = "bold", hjust = 0.5),
-          legend.text = element_text(size = legend_text_size),
-          legend.title = element_text(size = legend_title_size)
-        )
-
-      label_df <- df[df$Significance == "FC和P都显著", , drop = FALSE]
-      if (identical(input$volcanoShowGene %||% "yes", "yes") && nrow(label_df) > 0) {
-        label_df <- label_df[order(label_df[[p_col]], -abs(label_df$logFC)), , drop = FALSE]
-        label_df <- utils::head(label_df, 50)
-        segment_color <- if (identical(input$volcanoLabelLine, "yes")) "grey50" else NA
-
-        label_layer <- if (identical(input$volcanoLabelBox, "yes")) {
-          ggrepel::geom_label_repel(
-            data = label_df,
-            aes(label = Gene),
-            size = label_size,
-            family = font_family,
-            segment.color = segment_color,
-            box.padding = 0.35,
-            point.padding = 0.2,
-            label.size = 0.15,
-            fill = "white",
-            max.overlaps = Inf,
-            show.legend = FALSE
-          )
-        } else {
-          ggrepel::geom_text_repel(
-            data = label_df,
-            aes(label = Gene),
-            size = label_size,
-            family = font_family,
-            segment.color = segment_color,
-            box.padding = 0.35,
-            point.padding = 0.2,
-            max.overlaps = Inf,
-            show.legend = FALSE
-          )
-        }
-
-        p <- p + label_layer
+        theme(plot.title = element_text(face = "bold", hjust = 0.5, color = "#2F4F4F"))
       }
-
-      p
-    }
 
     select_heatmap_genes <- function(res, max_display = 50) {
       ordered_genes <- rownames(res$sig)
@@ -978,7 +1061,7 @@ deg_server <- function(id) {
         plot_key,
         volcano = print(make_volcano_plot(
           res,
-          point_size = if (large) deg_clean_number(input$volcanoPointSize, 2, 0.1, 10) * 1.5 else NULL,
+          point_size = if (large) 3 else NULL,
           base_size = if (large) 18 else 13
         )),
         heatmap = draw_deg_heatmap(res, fontsize_row = if (large) 8 else 7, fontsize_col = if (large) 10 else 8),
@@ -1271,7 +1354,7 @@ deg_server <- function(id) {
               div(class = "q", tags$span(style = "color: #3498db;", "Q: "), "差异分析需要什么输入文件？"),
               div(class = "a",
                   tags$span(style = "color: #2ecc71; font-weight: bold;", "A: "),
-                  "需要以下三个文件：",
+                  "只需要以下一个文件：",
                   tags$table(
                     tags$thead(
                       tags$tr(
@@ -1281,9 +1364,7 @@ deg_server <- function(id) {
                       )
                     ),
                     tags$tbody(
-                      tags$tr(tags$td("表达矩阵"), tags$td("CSV/TSV"), tags$td("第一列为基因名，其余列为样本表达值")),
-                      tags$tr(tags$td("对照组列表"), tags$td("TXT"), tags$td("每行一个样本名，必须与表达矩阵列名一致")),
-                      tags$tr(tags$td("实验组列表"), tags$td("TXT"), tags$td("每行一个样本名，必须与表达矩阵列名一致"))
+                      tags$tr(tags$td("表达矩阵"), tags$td("CSV/TSV/TXT"), tags$td("第一列为基因名，其余列为样本表达值；对照组列名以 _con 结尾，实验组列名以 _tre 结尾"))
                     )
                   ),
                   tags$br(),
@@ -1401,53 +1482,81 @@ deg_server <- function(id) {
     
     # ---- 示例数据下载 ----
     output$downloadExampleCounts <- downloadHandler(
-      filename = "geneMatrix.txt",
+      filename = "Sample_Type_Matrix_example.txt",
       content = function(file) {
-        if (file.exists("data/geneMatrix.txt")) {
-          file.copy("data/geneMatrix.txt", file)
-        } else {
-          set.seed(123)
-          genes <- paste0("Gene", 1:50)
-          samples <- paste0("Sample", 1:12)
-          data <- matrix(rnorm(50 * 12, mean = 10, sd = 3), nrow = 50, ncol = 12)
-          colnames(data) <- samples
-          rownames(data) <- genes
-          data[1:20, 7:12] <- data[1:20, 7:12] + 2
-          write.table(data, file, sep = "\t", quote = FALSE, row.names = TRUE, col.names = NA)
+        set.seed(123)
+        genes <- paste0("Gene", 1:50)
+        samples <- c(paste0("Sample", 1:6, "_con"), paste0("Sample", 7:12, "_tre"))
+        data <- matrix(rnorm(50 * 12, mean = 10, sd = 3), nrow = 50, ncol = 12)
+        colnames(data) <- samples
+        rownames(data) <- genes
+        data[1:20, 7:12] <- data[1:20, 7:12] + 2
+        write.table(data, file, sep = "\t", quote = FALSE, row.names = TRUE, col.names = NA)
+      }
+    )
+
+    observeEvent(input$sampleTypeExprFile, {
+      req(input$sampleTypeExprFile$name)
+      deg_set_upload_status("sampleTypeExprFileStatus", input$sampleTypeExprFile$name)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$sampleTypeControlFile, {
+      req(input$sampleTypeControlFile$name)
+      deg_set_upload_status("sampleTypeControlFileStatus", input$sampleTypeControlFile$name)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$sampleTypeTreatFile, {
+      req(input$sampleTypeTreatFile$name)
+      deg_set_upload_status("sampleTypeTreatFileStatus", input$sampleTypeTreatFile$name)
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$runSampleType, {
+      if (is.null(input$sampleTypeExprFile) ||
+          is.null(input$sampleTypeControlFile) ||
+          is.null(input$sampleTypeTreatFile)) {
+        showNotification("请上传表达矩阵、对照组列表和实验组列表。", type = "error")
+        return()
+      }
+
+      expr_file <- deg_upload_ref(input$sampleTypeExprFile)
+      control_file <- deg_upload_ref(input$sampleTypeControlFile)
+      treat_file <- deg_upload_ref(input$sampleTypeTreatFile)
+      auto_log <- input$sampleTypeAutoLog
+      normalize <- input$sampleTypeNormalize
+
+      sample_type_running(TRUE)
+      sample_type_result(NULL)
+      task_note <- app_start_task_notification("样本类型矫正正在后台运行，可以切换到其它模块继续操作。")
+
+      run_async_task(
+        task = function() {
+          deg_process_sample_type_matrix(
+            expr_file = expr_file,
+            control_file = control_file,
+            treat_file = treat_file,
+            auto_log = auto_log,
+            normalize = normalize
+          )
+        },
+        on_success = function(result) {
+          sample_type_result(result)
+          showNotification("样本类型矩阵生成完成。", type = "message", duration = 5)
+        },
+        on_error = function(error) {
+          showNotification(paste0("错误: ", conditionMessage(error)), type = "error", duration = 10)
+        },
+        on_finally = function() {
+          sample_type_running(FALSE)
+          app_clear_task_notification(task_note)
         }
-      }
-    )
-    
-    output$downloadExampleCtrl <- downloadHandler(
-      filename = "control.txt",
-      content = function(file) {
-        writeLines(paste0("Sample", 1:6), file)
-      }
-    )
-    
-    output$downloadExampleTreat <- downloadHandler(
-      filename = "treat.txt",
-      content = function(file) {
-        writeLines(paste0("Sample", 7:12), file)
-      }
-    )
+      )
+      return()
+    })
     
     # ---- 文件选择状态更新 ----
     observeEvent(input$countFile, {
       if (!is.null(input$countFile)) {
-        runjs(paste0('$("#', ns("countFileStatus"), '").text("', input$countFile$name, '")'))
-      }
-    })
-    
-    observeEvent(input$ctrlFile, {
-      if (!is.null(input$ctrlFile)) {
-        runjs(paste0('$("#', ns("ctrlFileStatus"), '").text("', input$ctrlFile$name, '")'))
-      }
-    })
-    
-    observeEvent(input$treatFile, {
-      if (!is.null(input$treatFile)) {
-        runjs(paste0('$("#', ns("treatFileStatus"), '").text("', input$treatFile$name, '")'))
+        deg_set_upload_status("countFileStatus", input$countFile$name)
       }
     })
     
@@ -1459,27 +1568,16 @@ deg_server <- function(id) {
       showNotification("已清除表达矩阵文件", type = "message")
     })
     
-    observeEvent(input$clearCtrlFile, {
-      shinyjs::reset("ctrlFile")
-      runjs(paste0('$("#', ns("ctrlFileStatus"), '").text("Drop file here or click to upload")'))
-      analysisResults(NULL)
-      showNotification("已清除对照组列表文件", type = "message")
-    })
-    
-    observeEvent(input$clearTreatFile, {
-      shinyjs::reset("treatFile")
-      runjs(paste0('$("#', ns("treatFileStatus"), '").text("Drop file here or click to upload")'))
-      analysisResults(NULL)
-      showNotification("已清除实验组列表文件", type = "message")
-    })
-    
     observeEvent(input$clearAllFiles, {
+      shinyjs::reset("sampleTypeExprFile")
+      shinyjs::reset("sampleTypeControlFile")
+      shinyjs::reset("sampleTypeTreatFile")
       shinyjs::reset("countFile")
-      shinyjs::reset("ctrlFile")
-      shinyjs::reset("treatFile")
+      runjs(paste0('$("#', ns("sampleTypeExprFileStatus"), '").text("Drop file here or click to upload")'))
+      runjs(paste0('$("#', ns("sampleTypeControlFileStatus"), '").text("Drop file here or click to upload")'))
+      runjs(paste0('$("#', ns("sampleTypeTreatFileStatus"), '").text("Drop file here or click to upload")'))
       runjs(paste0('$("#', ns("countFileStatus"), '").text("Drop file here or click to upload")'))
-      runjs(paste0('$("#', ns("ctrlFileStatus"), '").text("Drop file here or click to upload")'))
-      runjs(paste0('$("#', ns("treatFileStatus"), '").text("Drop file here or click to upload")'))
+      sample_type_result(NULL)
       analysisResults(NULL)
       showNotification("已清除所有上传文件和分析结果", type = "message")
     })
@@ -1499,17 +1597,13 @@ deg_server <- function(id) {
       
       print("runDiff clicked")
       print(paste("countFile:", is.null(input$countFile)))
-      print(paste("ctrlFile:", is.null(input$ctrlFile)))
-      print(paste("treatFile:", is.null(input$treatFile)))
       
-      if (is.null(input$countFile) || is.null(input$ctrlFile) || is.null(input$treatFile)) {
-        showNotification("请上传所有必需的文件！", type = "error")
+      if (is.null(input$countFile)) {
+        showNotification("请上传表达矩阵文件！", type = "error")
         return()
       }
 
       count_file <- input$countFile
-      ctrl_file <- input$ctrlFile
-      treat_file <- input$treatFile
       log_fc_cutoff <- input$logFC
       p_value_cutoff <- deg_p_cutoff()
       p_value_column <- deg_p_value_column()
@@ -1517,38 +1611,10 @@ deg_server <- function(id) {
 
       run_async_task(
         task = function() {
-          expr_matrix <- read_expression_matrix(count_file)
-
-          if (any(is.na(expr_matrix))) {
-            stop("表达矩阵中含有无法识别的数值，请检查数据", call. = FALSE)
-          }
-
-          expr_matrix <- suppressWarnings(limma::normalizeBetweenArrays(expr_matrix, method = "quantile"))
-
-          ctrl_samples <- read_sample_list(ctrl_file)
-          treat_samples <- read_sample_list(treat_file)
-          validate_expression_inputs(expr_matrix, ctrl_samples, treat_samples)
-
-          missing_ctrl <- ctrl_samples[!ctrl_samples %in% colnames(expr_matrix)]
-          missing_treat <- treat_samples[!treat_samples %in% colnames(expr_matrix)]
-
-          if (length(missing_ctrl) > 0 || length(missing_treat) > 0) {
-            msg <- ""
-            if (length(missing_ctrl) > 0) {
-              msg <- paste0(msg, "对照组缺失: ", paste(missing_ctrl, collapse = ", "))
-            }
-            if (length(missing_treat) > 0) {
-              msg <- paste0(msg, " | 实验组缺失: ", paste(missing_treat, collapse = ", "))
-            }
-            stop(paste0("样本名不匹配: ", msg), call. = FALSE)
-          }
-
-          data_ctrl <- expr_matrix[, ctrl_samples, drop = FALSE]
-          data_treat <- expr_matrix[, treat_samples, drop = FALSE]
-          combined_expr <- cbind(data_ctrl, data_treat)
-
-          num_ctrl <- ncol(data_ctrl)
-          num_treat <- ncol(data_treat)
+          prepared <- deg_prepare_expression_matrix(count_file)
+          combined_expr <- prepared$combined
+          num_ctrl <- prepared$n_ctrl
+          num_treat <- prepared$n_treat
 
           group_labels <- c(rep("Control", num_ctrl), rep("Treatment", num_treat))
           design_mat <- stats::model.matrix(~0 + factor(group_labels))
@@ -1571,7 +1637,10 @@ deg_server <- function(id) {
             n_ctrl = num_ctrl,
             n_treat = num_treat,
             p_value_column = p_value_column,
-            p_value_cutoff = p_value_cutoff
+            p_value_cutoff = p_value_cutoff,
+            ctrl_samples = prepared$ctrl_samples,
+            treat_samples = prepared$treat_samples,
+            log_transformed = prepared$log_transformed
           )
         },
         on_success = function(result) {
@@ -1594,75 +1663,6 @@ deg_server <- function(id) {
         }
       )
       return()
-      
-      showNotification("正在分析，请稍候...", type = "message", duration = 10)
-      
-      tryCatch({
-        expr_matrix <- read_expression_matrix(input$countFile)
-        
-        if (any(is.na(expr_matrix))) {
-          showNotification("表达矩阵中含有无法识别的数值，请检查数据", type = "error")
-          return()
-        }
-        
-        expr_matrix <- suppressWarnings(normalizeBetweenArrays(expr_matrix, method = "quantile"))
-        
-        ctrl_samples <- read_sample_list(input$ctrlFile)
-        treat_samples <- read_sample_list(input$treatFile)
-        validate_expression_inputs(expr_matrix, ctrl_samples, treat_samples)
-        
-        print(paste("Control samples:", length(ctrl_samples)))
-        print(paste("Treatment samples:", length(treat_samples)))
-        
-        missing_ctrl <- ctrl_samples[!ctrl_samples %in% colnames(expr_matrix)]
-        missing_treat <- treat_samples[!treat_samples %in% colnames(expr_matrix)]
-        
-        if (length(missing_ctrl) > 0 || length(missing_treat) > 0) {
-          msg <- ""
-          if (length(missing_ctrl) > 0) msg <- paste0(msg, "对照组缺失: ", paste(missing_ctrl, collapse=", "))
-          if (length(missing_treat) > 0) msg <- paste0(msg, " | 实验组缺失: ", paste(missing_treat, collapse=", "))
-          showNotification(paste0("样本名不匹配: ", msg), type = "error")
-          return()
-        }
-        
-        data_ctrl <- expr_matrix[, ctrl_samples, drop = FALSE]
-        data_treat <- expr_matrix[, treat_samples, drop = FALSE]
-        combined_expr <- cbind(data_ctrl, data_treat)
-        
-        num_ctrl <- ncol(data_ctrl)
-        num_treat <- ncol(data_treat)
-        
-        group_labels <- c(rep("Control", num_ctrl), rep("Treatment", num_treat))
-        design_mat <- model.matrix(~0 + factor(group_labels))
-        colnames(design_mat) <- c("Control", "Treatment")
-        
-        fit_initial <- lmFit(combined_expr, design_mat)
-        contrast_mat <- makeContrasts(Treatment - Control, levels = design_mat)
-        fit_contrasted <- contrasts.fit(fit_initial, contrast_mat)
-        fit_contrasted <- eBayes(fit_contrasted)
-        
-        all_results <- topTable(fit_contrasted, adjust.method = "fdr", number = Inf)
-        
-        sig_genes <- all_results[abs(all_results$logFC) > input$logFC & 
-                                   all_results$adj.P.Val < input$adjP, ]
-        sig_genes <- sig_genes[order(sig_genes$logFC), ]
-        
-        analysisResults(list(
-          all = all_results,
-          sig = sig_genes,
-          combined = combined_expr,
-          n_ctrl = num_ctrl,
-          n_treat = num_treat
-        ))
-        active_deg_plot("volcano")
-        
-        showNotification(paste0("分析完成！显著差异基因: ", nrow(sig_genes)), 
-                         type = "message", duration = 5)
-        
-      }, error = function(e) {
-        print(paste("Error:", e$message))
-        showNotification(paste0("错误: ", e$message), type = "error", duration = 10)
-      })
     })
     
     # ---- 火山图 ----
@@ -1788,9 +1788,89 @@ deg_server <- function(id) {
       df <- cbind(Gene = rownames(res$sig), res$sig)
       datatable(df, options = list(pageLength = 20, scrollX = TRUE))
     })
+
+    output$sampleTypePreview <- renderDT({
+      res <- sample_type_result()
+      if (is.null(res)) {
+        return(NULL)
+      }
+      preview_rows <- min(10, nrow(res$matrix))
+      preview_cols <- min(10, ncol(res$matrix))
+      datatable(
+        res$matrix[seq_len(preview_rows), seq_len(preview_cols), drop = FALSE],
+        rownames = FALSE,
+        options = list(pageLength = 10, scrollX = TRUE)
+      )
+    })
+
+    output$sampleTypeSummary <- renderDT({
+      res <- sample_type_result()
+      if (is.null(res)) {
+        return(NULL)
+      }
+      datatable(res$summary, rownames = FALSE, options = list(dom = "t", pageLength = 10))
+    })
+
+    output$degDataPreview <- renderUI({
+      if (identical(input$degTaskTab, "样本类型矫正")) {
+        if (sample_type_running()) {
+          return(div(style = "padding: 16px; color: #607d8b;", "样本类型矫正正在后台运行，请稍候。"))
+        }
+        return(tagList(
+          DTOutput(ns("sampleTypePreview")),
+          br(),
+          DTOutput(ns("sampleTypeSummary"))
+        ))
+      }
+      DTOutput(ns("resultTable"))
+    })
     
     # ---- 结果文件列表 ----
     output$resultFileList <- renderUI({
+      if (identical(input$degTaskTab, "样本类型矫正")) {
+        if (is.null(sample_type_result())) {
+          message <- if (sample_type_running()) {
+            "样本类型矫正正在后台运行，请稍候。"
+          } else {
+            "暂无结果文件。请先运行样本类型矫正。"
+          }
+          return(
+            div(
+              class = "deg-result-file-list",
+              div(style = "padding: 10px 8px; color: #78909c; font-size: 11px;", message)
+            )
+          )
+        }
+
+        rows <- list(
+          list(file = "Sample Type Matrix.csv", type = "CSV", desc = "样本类型矩阵", download = "downloadSampleTypeCSV"),
+          list(file = "Sample Type Matrix.txt", type = "TXT", desc = "样本类型矩阵文本格式", download = "downloadSampleTypeTXT"),
+          list(file = "Sample_Summary.txt", type = "TXT", desc = "样本类型矫正统计", download = "downloadSampleTypeSummary")
+        )
+
+        return(div(
+          class = "deg-result-file-list",
+          lapply(seq_along(rows), function(i) {
+            row <- rows[[i]]
+            div(
+              class = "deg-result-file-row",
+              span(sprintf("%02d", i), class = "deg-file-index"),
+              span(row$file, class = "deg-result-file-name", title = row$file),
+              span(row$type, class = "deg-result-file-type"),
+              span(row$desc, class = "deg-result-file-desc", title = row$desc),
+              span(
+                class = "deg-result-file-download",
+                downloadButton(
+                  ns(row$download),
+                  "下载",
+                  style = "font-size: 10px; padding: 1px 8px;"
+                )
+              )
+            )
+          })
+        ))
+      }
+
       res <- analysisResults()
       if (is.null(res)) {
         return(
@@ -1808,9 +1888,9 @@ deg_server <- function(id) {
         list(file = paste0("diff_results_", Sys.Date(), ".csv"), type = "CSV", desc = "显著差异基因结果表", download = "downloadResult", plot = ""),
         list(file = paste0("up_genes_all.txt (", length(all_up_genes), " 个)"), type = "TXT", desc = "全部上调基因", download = "downloadUpGenesAll", plot = ""),
         list(file = paste0("down_genes_all.txt (", length(all_down_genes), " 个)"), type = "TXT", desc = "全部下调基因", download = "downloadDownGenesAll", plot = ""),
-        list(file = "volcano.png", type = "PNG", desc = "火山图，点击文件名可在上方预览", download = "", plot = "volcano"),
-        list(file = "heatmap.png", type = "PNG", desc = "差异基因热图，点击文件名可在上方预览", download = "", plot = "heatmap"),
-        list(file = "pca.png", type = "PNG", desc = "PCA 图，点击文件名可在上方预览", download = "", plot = "pca")
+        list(file = "volcano.png", type = "PNG", desc = "火山图，点击文件名可在上方预览", download = "downloadDegPlot_volcano", plot = "volcano"),
+        list(file = "heatmap.png", type = "PNG", desc = "差异基因热图，点击文件名可在上方预览", download = "downloadDegPlot_heatmap", plot = "heatmap"),
+        list(file = "pca.png", type = "PNG", desc = "PCA 图，点击文件名可在上方预览", download = "downloadDegPlot_pca", plot = "pca")
       )
 
       div(
@@ -1829,10 +1909,9 @@ deg_server <- function(id) {
           }
 
           download_control <- if (nzchar(row$plot)) {
-            actionButton(
-              ns(paste0("openDegPlotDownload_", row$plot)),
+            downloadButton(
+              ns(row$download),
               "下载",
-              class = "btn btn-default btn-xs",
               style = "font-size: 10px; padding: 1px 8px;"
             )
           } else {
@@ -1914,6 +1993,21 @@ deg_server <- function(id) {
       }
     )
 
+    output$downloadDegPlot_volcano <- downloadHandler(
+      filename = function() "volcano.png",
+      content = function(file) write_deg_plot_png(file, "volcano")
+    )
+
+    output$downloadDegPlot_heatmap <- downloadHandler(
+      filename = function() "heatmap.png",
+      content = function(file) write_deg_plot_png(file, "heatmap")
+    )
+
+    output$downloadDegPlot_pca <- downloadHandler(
+      filename = function() "pca.png",
+      content = function(file) write_deg_plot_png(file, "pca")
+    )
+
     observeEvent(input$activeDegPlot_click, {
       if (is.null(analysisResults())) {
         return()
@@ -1929,6 +2023,30 @@ deg_server <- function(id) {
         )
       )
     })
+
+    output$downloadSampleTypeCSV <- downloadHandler(
+      filename = function() "Sample Type Matrix.csv",
+      content = function(file) {
+        req(sample_type_result())
+        utils::write.csv(sample_type_result()$matrix, file, row.names = FALSE, fileEncoding = "UTF-8")
+      }
+    )
+
+    output$downloadSampleTypeTXT <- downloadHandler(
+      filename = function() "Sample Type Matrix.txt",
+      content = function(file) {
+        req(sample_type_result())
+        utils::write.table(sample_type_result()$matrix, file, sep = "\t", quote = FALSE, row.names = FALSE)
+      }
+    )
+
+    output$downloadSampleTypeSummary <- downloadHandler(
+      filename = function() "Sample_Summary.txt",
+      content = function(file) {
+        req(sample_type_result())
+        writeLines(sample_type_result()$summary_lines, con = file, useBytes = TRUE)
+      }
+    )
     
     # ============================================================
     # 放大查看功能
