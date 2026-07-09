@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$AppName = "转录组数据综合分析系统 V1.0",
   [string]$InnoCompiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
   [switch]$SkipPortablePackage
@@ -43,3 +43,4 @@ if (!(Test-Path $SetupExe)) {
 }
 
 Write-Host "Installer generated: $SetupExe"
+

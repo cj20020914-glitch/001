@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$AppName = "转录组数据综合分析系统 V1.0",
   [switch]$SkipPreparePackages,
   [switch]$NoZip
@@ -67,3 +67,4 @@ if (!$NoZip) {
 } else {
   Write-Host "Package folder: $Target"
 }
+
